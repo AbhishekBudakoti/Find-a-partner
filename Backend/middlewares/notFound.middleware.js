@@ -1,12 +1,11 @@
-const notFound=(req,res)=>{
-    res.status(400).json({
-        success:false,
-        message:`Route not found${req.method} ${req.orignalUrl}`
-    })
+const notFound = (req, res) => {
+    res.status(404).json({
+        success: false,
+        message: `Route not found: ${req.method} ${req.originalUrl}`
+    });
+};
 
-}
-
-module.exports=notFound
+module.exports = notFound;
 
 
 // Now if somebody requests:
