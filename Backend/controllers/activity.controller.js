@@ -4,6 +4,7 @@ const {successResponse}=require("../utils/response")
 
 
 const createActivity = async (req,res) =>{
+    console.log('createActivity called', { body: req.body, user: req.user });
     const {name,description}=req.body;
 
     if(!name){
@@ -25,9 +26,11 @@ const createActivity = async (req,res) =>{
         description,
         })
 
+    console.log('activity created', activity)
+
 
         return successResponse(
-            res,{activity},"Activity created succesfuly"
+            res,{activity},"Activity created successfully"
         )
 
 

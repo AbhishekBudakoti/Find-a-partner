@@ -14,7 +14,7 @@ const startServer=async()=>{
             console.log(`Server running http://localhost:${PORT}`)
         })
     }catch(error){
-        console.log(`Server setup faild ${error.message}`)
+        console.log(`Server setup failed ${error.message}`)
         process.exit(1)
 
     }

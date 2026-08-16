@@ -10,9 +10,9 @@ const {protect}=require('../middlewares/auth.middleware')
 const router= express.Router()
 
 
-router.get("/",asyncHandler(getActivity))
+router.get("/", asyncHandler(getActivity))
 
-router.get("/",protect,asyncHandler(createActivity))
+router.post("/", protect, asyncHandler(createActivity))
 
 
 module.exports=router;

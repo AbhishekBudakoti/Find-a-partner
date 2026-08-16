@@ -1,6 +1,6 @@
 const mongoose=require('mongoose');
 
-const activityScema=new mongoose.Schema({
+const activitySchema=new mongoose.Schema({
     name:{
 
       type: String,
@@ -25,14 +25,13 @@ const activityScema=new mongoose.Schema({
 },{timestamps:true})
 
 
-activitySchem.pre("save",function(next){
-    if(this.isModified("name")){
-        this.name=this.name.charAt(0).toUpperCase()+
-        this.name.slice(1).toLowerCase()
-    }
-    next()
-})
+activitySchema.pre("save", function () {
+  if (this.isModified("name")) {
+    this.name = this.name.charAt(0).toUpperCase() +
+      this.name.slice(1).toLowerCase();
+  }
+});
 
-const Activity=mongoose.model("Avtivity",activityScema)
+const Activity=mongoose.model("Activity",activitySchema)
 
 module.exports=Activity;

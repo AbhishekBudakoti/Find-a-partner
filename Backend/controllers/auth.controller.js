@@ -62,7 +62,7 @@ const login=async(req,res)=>{
     const user=await User.findOne({email})
 
     if(!user){
-        const error=new Error("Invaild Username and Password")
+        const error=new Error("Invalid Username and Password")
         error.statusCode=400;
         throw error;
         
@@ -72,7 +72,7 @@ const login=async(req,res)=>{
 
     if(!isPasswordValid){
 
-              const error=new Error("Invaild Username and Password")
+              const error=new Error("Invalid Username and Password")
         error.statusCode=400;
         throw error;
 

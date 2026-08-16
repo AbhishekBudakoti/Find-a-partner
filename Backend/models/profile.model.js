@@ -8,7 +8,7 @@ const profileSchema=new mongoose.Schema({
         required:true,
         unique:true
     },
-    avtar:{
+    avatar:{
         type:String,
         default:""
     },
@@ -24,7 +24,7 @@ const profileSchema=new mongoose.Schema({
         default:"beginner"
     },
 
-    availibility:{
+    availability:{
         type:[
             {
                 day:{
@@ -57,9 +57,24 @@ const profileSchema=new mongoose.Schema({
         },
         coordinates:{
             type:[Number],
-            dafault:undefined
+            default:undefined
         },
+
+ 
     },
+
+           averageRating: {
+  type: Number,
+  min: 0,
+  max: 5,
+  default: 0,
+},
+
+ratingCount: {
+  type: Number,
+  min: 0,
+  default: 0,
+},
 },
 {
     timestamps:true,
