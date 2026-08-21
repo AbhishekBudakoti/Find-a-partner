@@ -1,42 +1,45 @@
 const onlineUsers = new Map();
 
-const addUserSocket = (userId,socketId)=>{
-    const existingSockets = onlineUser.get(userId);
+const addUserSocket = (userId, socketId) => {
+    const existingSockets = onlineUsers.get(userId);
 
-    if(existingSockets){
-        existingSockets.add(socketId)
-    }
-    else{
-        onlineUsers.set(userId,new Set ([socketId]));
+    if (existingSockets) {
+        existingSockets.add(socketId);
+        return false;
+    } else {
+        onlineUsers.set(userId, new Set([socketId]));
+        return true;
     }
 };
 
-const removeUserSocket = (userId,socketId) =>{
-        const existingSockets = onlineUsers.get(userId);
+const removeUserSocket = (userId, socketId) => {
+    const existingSockets = onlineUsers.get(userId);
 
-        if(!existingSockets){
-            return false;
-        }
+    if (!existingSockets) {
+        return false;
+    }
 
-        existingSockets.delete(socketId);
+    existingSockets.delete(socketId);
 
-        if (existingSockets.size === 0){
-            onlineUsers.delete(userId)
-            return true;
-        }
+    if (existingSockets.size === 0) {
+        onlineUsers.delete(userId);
+        return true;
+    }
 
-        return false
+    return false;
 };
 
-const isUserOnline =(userId)=>{
+const isUserOnline = (userId) => {
     return onlineUsers.has(userId);
 };
 
-const getOnlineUserIds =()=>{
-    return [...onlineUsers.keys()]
+const getOnlineUserIds = () => {
+    return [...onlineUsers.keys()];
 };
 
-module.exports= {  addUserSocket,
+module.exports = {
+    addUserSocket,
     removeUserSocket,
     isUserOnline,
-    getOnlineUserIds,}
+    getOnlineUserIds,
+};

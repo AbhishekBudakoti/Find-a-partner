@@ -7,7 +7,7 @@ const { successResponse } = require('../utils/response');
 
 //Register user
 const register=async(req,res)=>{
-    const {name,email,password}=req.body;
+    let {name,email,password}=req.body;
 
     // Validate required fields
     if(!name||!email||!password){
@@ -16,6 +16,9 @@ const register=async(req,res)=>{
         error.statusCode=400;
         throw error;
     }
+
+    email = email.toLowerCase().trim();
+
   // Check existing user
   const existingUser= await User.findOne({email});
   if(existingUser){
@@ -51,13 +54,15 @@ const register=async(req,res)=>{
 
 //login user
 const login=async(req,res)=>{
-    const {email,password}=req.body;
+    let {email,password}=req.body;
 
     if(!email||!password){
         const error=new Error("Enter the username and password")
         error.statusCode=400;
         throw error;
     }
+
+    email = email.toLowerCase().trim();
 
     const user=await User.findOne({email})
 
@@ -79,7 +84,7 @@ const login=async(req,res)=>{
     }
 
 
-    const JWT_SECRET = process.env.JWT_SECRETS || process.env.JWT_SECRET || 'dev-secret-key';
+    const JWT_SECRET = process.env.JWT_SECRET || process.env.JWT_SECRETS || 'dev-secret-key';
 
     const token = jwt.sign(
         {
