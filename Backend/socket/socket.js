@@ -1,20 +1,24 @@
 const { Server } = require("socket.io");
 const jwt = require("jsonwebtoken");
 const cookie = require("cookie");
-const parseCookie = cookie.parseCookie || cookie.parse;
 
 const {
     addUserSocket,
-    removeUserSocket, getOnlineUserIds
+    removeUserSocket,
+    getOnlineUserIds,
 } = require("../services/presence.service");
+
+let ioInstance = null;
 
 const initializeSocket = (server) => {
     const io = new Server(server, {
         cors: {
-            origin: process.env.CLIENT_URL || "http://localhost:5173",
+            origin: process.env.CLIENT_URL,
             credentials: true,
         },
     });
+
+    ioInstance = io;
 
     // Socket authentication
     io.use((socket, next) => {
@@ -25,27 +29,28 @@ const initializeSocket = (server) => {
                 return next(new Error("Authentication required"));
             }
 
-            const cookies = parseCookie(cookieHeader);
+            const cookies = cookie.parse(cookieHeader);
 
             const token = cookies.token;
 
             if (!token) {
                 return next(new Error("Authentication required"));
             }
-            console.log("Socket token received:", !!token);
-            const JWT_SECRET = process.env.JWT_SECRET || process.env.JWT_SECRETS || 'dev-secret-key';
+
             const decoded = jwt.verify(
                 token,
-                JWT_SECRET
+                process.env.JWT_SECRET || process.env.JWT_SECRETS || 'dev-secret-key'
             );
 
             socket.user = decoded;
 
             next();
         } catch (error) {
-            console.log("SOCKET JWT ERROR");
-            console.log("Name:", error.name);
-            console.log("Message:", error.message);
+            console.error(
+                "Socket JWT error:",
+                error.name,
+                error.message
+            );
 
             next(new Error("Invalid or expired token"));
         }
@@ -63,16 +68,19 @@ const initializeSocket = (server) => {
             socket.id
         );
 
+        // Send current online users to newly connected user
         socket.emit("presence:initial", {
             onlineUserIds: getOnlineUserIds(),
         });
 
+        // Tell everyone that this user is online
         if (becameOnline) {
-            socket.broadcast.emit("presence:online", {
+            io.emit("presence:online", {
                 userId,
             });
         }
 
+        // Socket disconnected
         socket.on("disconnect", () => {
             console.log(
                 `Socket disconnected: ${socket.id}`
@@ -83,6 +91,8 @@ const initializeSocket = (server) => {
                 socket.id
             );
 
+            // Only announce offline when the user
+            // has no remaining active sockets
             if (becameOffline) {
                 io.emit("presence:offline", {
                     userId,
@@ -95,3 +105,5 @@ const initializeSocket = (server) => {
 };
 
 module.exports = initializeSocket;
+
+module.exports.getIO = () => ioInstance;

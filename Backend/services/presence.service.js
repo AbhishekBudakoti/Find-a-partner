@@ -37,9 +37,22 @@ const getOnlineUserIds = () => {
     return [...onlineUsers.keys()];
 };
 
+
+const getUserSocketIds = (userId) => {
+    const sockets = onlineUsers.get(userId.toString());
+
+    if (!sockets) {
+        return [];
+    }
+
+    return Array.from(sockets);
+};
+
+
 module.exports = {
     addUserSocket,
     removeUserSocket,
     isUserOnline,
     getOnlineUserIds,
+    getUserSocketIds,
 };

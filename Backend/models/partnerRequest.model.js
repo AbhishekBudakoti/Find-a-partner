@@ -15,7 +15,7 @@ const partnerRequestSchema = new mongoose.Schema({
         type:String,
         trim:true,
         maxlength:[300,"Message cannot exceed 300 charachters"],
-        dafault:" "
+        default: ""
     },
     status:{
         type:String,
@@ -41,7 +41,7 @@ partnerRequestSchema.index({
     status:1
 });
 
-const PartnerRequest = mongoose.model("PatnerRequest",partnerRequestSchema);
+const PartnerRequest = mongoose.model("PartnerRequest",partnerRequestSchema);
 
 module.exports = PartnerRequest;
 
