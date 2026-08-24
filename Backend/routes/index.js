@@ -8,6 +8,7 @@ const partnerRoutes = require('./partner.routes')
 const matchRoutes = require("./match.routes");
 const requestRoutes = require("./request.routes");
 const notificationRoutes = require("./notification.routes");
+const chatRoutes = require("./chat.routes")
 
 const router = express.Router()
 
@@ -19,5 +20,6 @@ router.use("/partners", partnerRoutes)
 router.use("/matches", matchRoutes);
 router.use("/requests", requestRoutes);
 router.use("/notifications", notificationRoutes);
+router.use("/chat",chatRoutes)
 
 module.exports = router

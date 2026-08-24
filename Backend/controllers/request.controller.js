@@ -62,6 +62,171 @@ const createRequest = async (req, res, next) => {
     }
 };
 
+
+const getUserRequests = async (req, res, next) => {
+
+    try {
+        const userId = req.user.id;
+
+        const requests = await PartnerRequest.find({
+            $or: [
+                { sender: userId },
+                { recipient: userId }
+            ]
+        })
+
+            .populate("sender", "name email")
+            .populate("recipient", "name email")
+            .sort({ createdAt: -1 });
+
+        res.status(200).json({
+            success: true,
+            message: "request fetched successfully",
+            data: { requests }
+        })
+    }
+    catch (error) {
+        next(error)
+
+    }
+
+}
+
+const acceptRequest = async (req, res, next) => {
+    try {
+        const userId = req.user.id;
+        const { id } = req.params;
+
+        const request = await PartnerRequest.findOne({
+            _id: id,
+            recipient: userId,
+            status: "pending"
+        });
+
+        if (!request) {
+            const error = new Error(
+                "pending request not found"
+            );
+            error.statusCode = 404;
+            throw error
+        }
+
+        request.status = "accepted";
+        await request.save();
+
+
+        await createNotification({
+            recipient: request.sender,
+            sender: userId,
+            type: "request_accepted",
+            message: "Your partner request was accepted!",
+            relatedRequest: request._id
+        });
+
+        res.status(200).json({
+            success: true,
+            message: "partner request accepted",
+            data: { request }
+        })
+
+    }
+    catch (error) {
+        next(error)
+    }
+}
+
+
+const rejectRequest = async (req, res, next) => {
+
+    try {
+        const userId = req.user.id;
+        const { id } = req.params;
+
+        const request = await PartnerRequest.findOne({
+            _id: id,
+            recipient: userId,
+            status: "pending"
+        });
+
+        if (!request) {
+            const error = new Error("Pending request not found");
+
+            error.statusCode = 404;
+            throw error;
+        }
+
+        request.status = "rejected"
+
+        await request.save();
+
+        await createNotification({
+            recipient: request.sender,
+            sender: userId,
+            type: "request_rejected",
+            message: "Your Partner requested was rejected",
+            relatedRequest: request._id
+        })
+
+        res.status(200).json({
+            success: true,
+            message: "Partner Rejected Successfully ",
+            data: { request }
+        })
+    }
+    catch (error) {
+        next(error)
+    }
+}
+
+const cancelRequest = async (req, res, next) => {
+    try {
+        const userId = req.user.id;
+        const { id } = req.params;
+
+
+        const request = await PartnerRequest.findOne({
+            _id: id,
+            sender: userId,
+            status: "pending"
+        })
+
+        if (!request) {
+            const error = new Error("Peding request not found")
+
+            error.statusCode = 404;
+            throw error
+        }
+
+        request.status = "cancelled"
+
+        await request.save()
+
+        await createNotification({
+            recipient: request.recipient,
+            sender: userId,
+            type: "request_cancelled",
+            message: "A Partner request was cancelled",
+            relatedRequest: request._id
+        })
+
+
+        res.status(200).json({
+            success: true,
+            message: "Partner requested cancelled",
+            data: {
+                request
+            }
+        })
+    }
+
+    catch (error) {
+        next(error)
+    }
+
+
+}
+
 module.exports = {
-    createRequest,
+    createRequest, getUserRequests, acceptRequest, rejectRequest,
+    cancelRequest
 };

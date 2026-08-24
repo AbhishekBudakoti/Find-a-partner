@@ -1,11 +1,13 @@
 const { Server } = require("socket.io");
 const jwt = require("jsonwebtoken");
 const cookie = require("cookie");
+const Message = require("../models/message.model")
 
 const {
     addUserSocket,
     removeUserSocket,
     getOnlineUserIds,
+    getUserSocketIds
 } = require("../services/presence.service");
 
 let ioInstance = null;
@@ -78,6 +80,45 @@ const initializeSocket = (server) => {
             io.emit("presence:online", {
                 userId,
             });
+
+
+            //CHAT EVENT 
+
+
+            socket.on("chat:send_message", async ({ recipientId, content }) => {
+                try {
+                    if (!recipientId || !content?.trim()) {
+                        return socket.emit("chat:error", {
+                            message: "Recipient and message content are required"
+
+                        })
+                    }
+
+                    const senderId = socket.user.id;
+
+                    const message = await Message.create({
+                        sender: senderId,
+                        recipient: recipientId,
+                        content: content.trim()
+                    })
+
+                    const recipientSocketIds = getUserSocketIds(recipientId);
+
+                    recipientSocketIds.forEach((socketId) => {
+                        io.to(socketId).emit("chat:recieve_message", {
+                            message
+                        })
+                    })
+                    socket.emit("chat:message_sent", {
+                        message
+                    })
+
+                }
+                catch (error) {
+                    console.error("Chat message error:", error)
+                    socket.emit("chat:error", { message: "Failed to send message", })
+                }
+            })
         }
 
         // Socket disconnected
