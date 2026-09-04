@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { io } from "socket.io-client";
+import apiClient, { SOCKET_URL } from "../api/client";
 
 /**
  * SocketContext provides a global React context for WebSocket real-time capabilities,
@@ -58,10 +59,7 @@ export const SocketProvider = ({ children }) => {
    */
   const fetchNotifications = async () => {
     try {
-      const response = await fetch("http://localhost:3000/api/notifications", {
-        credentials: "include",
-      });
-      const data = await response.json();
+      const { data } = await apiClient.get("/notifications");
       if (data.success) {
         setNotifications(data.data.notifications || []);
         setUnreadNotificationCount(data.data.unreadCount || 0);
@@ -79,14 +77,9 @@ export const SocketProvider = ({ children }) => {
    */
   const markAsRead = async (notificationId) => {
     try {
-      const response = await fetch(
-        `http://localhost:3000/api/notifications/${notificationId}/read`,
-        {
-          method: "PATCH",
-          credentials: "include",
-        }
+      const { data } = await apiClient.patch(
+        `/notifications/${notificationId}/read`
       );
-      const data = await response.json();
       if (data.success) {
         // Mark notification as read in local state
         setNotifications((prev) =>
@@ -112,14 +105,7 @@ export const SocketProvider = ({ children }) => {
    */
   const markAllAsRead = async () => {
     try {
-      const response = await fetch(
-        "http://localhost:3000/api/notifications/read-all",
-        {
-          method: "PATCH",
-          credentials: "include",
-        }
-      );
-      const data = await response.json();
+      const { data } = await apiClient.patch("/notifications/read-all");
       if (data.success) {
         setNotifications((prev) =>
           prev.map((n) => ({ ...n, isRead: true }))
@@ -134,7 +120,7 @@ export const SocketProvider = ({ children }) => {
   // Setup WebSocket connection and event listeners on mount
   useEffect(() => {
     // Instantiate Socket.io client
-    const newSocket = io("http://localhost:3000", {
+    const newSocket = io(SOCKET_URL, {
       withCredentials: true,
     });
     setSocket(newSocket);

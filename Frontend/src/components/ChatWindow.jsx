@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useSocket } from "../context/SocketContext";
+import apiClient from "../api/client";
 
 const ChatWindow = ({ userId, userName }) => {
     const {
@@ -24,48 +25,25 @@ const ChatWindow = ({ userId, userName }) => {
     useEffect(() => {
         const fetchChatHistory = async () => {
             try {
-                const response = await fetch(
-                    `http://localhost:3000/api/chat/${userId}`,
-                    {
-                        method: "GET",
-                        credentials: "include",
-                    }
-                );
-
-                const data = await response.json();
-
-                if (!response.ok) {
-                    if (response.status === 401) {
-                        setAuthError(true);
-                    }
-                    throw new Error(
-                        data.message || "Failed to fetch chat history"
-                    );
-                }
+                const { data } = await apiClient.get(`/chat/${userId}`);
 
                 setAuthError(false);
                 setHistory(data.data.messages || data.data.message || []);
 
                 // Mark received messages as read
-                const readResponse = await fetch(
-                    `http://localhost:3000/api/chat/${userId}/read`,
-                    {
-                        method: "PATCH",
-                        credentials: "include",
-                    }
-                );
-
-                const readData = await readResponse.json();
-
-                if (!readResponse.ok) {
+                try {
+                    await apiClient.patch(`/chat/${userId}/read`);
+                    console.log("Messages marked as read");
+                } catch (readError) {
                     console.error(
                         "Failed to mark messages as read:",
-                        readData.message
+                        readError.response?.data?.message || readError.message
                     );
-                } else {
-                    console.log("Messages marked as read");
                 }
             } catch (error) {
+                if (error.response?.status === 401) {
+                    setAuthError(true);
+                }
                 console.error("Chat history error:", error);
             }
         };
