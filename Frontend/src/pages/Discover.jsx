@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
 import apiClient from "../api/client";
-import OnlineStatus from "../components/OnlineStatus";
+import MatchCard from "../components/MatchCard";
 
 const DAYS = ["", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
 const SKILL_LEVELS = ["", "beginner", "intermediate", "advanced"];
@@ -13,23 +12,22 @@ const inputStyle = {
   border: "1px solid #cbd5e1",
 };
 
-const qualityColor = {
-  "Excellent match": "#16a34a",
-  "Good match": "#2563eb",
-  "Fair match": "#d97706",
-  "Low match": "#94a3b8",
+const emptyFilters = {
+  activity: "",
+  city: "",
+  day: "",
+  startTime: "",
+  endTime: "",
+  skillLevel: "",
 };
 
 const Discover = () => {
   const [activityOptions, setActivityOptions] = useState([]);
-  const [filters, setFilters] = useState({
-    activity: "",
-    city: "",
-    day: "",
-    startTime: "",
-    endTime: "",
-    skillLevel: "",
-  });
+  const [filters, setFilters] = useState(emptyFilters);
+  // The filters an in-flight/last search actually ran with — MatchCard needs
+  // this (not the live `filters` state) to know which breakdown categories
+  // the backend scored vs. left out.
+  const [appliedFilters, setAppliedFilters] = useState(emptyFilters);
 
   const [matches, setMatches] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -53,6 +51,7 @@ const Discover = () => {
       const params = Object.fromEntries(Object.entries(filters).filter(([, v]) => v));
       const { data } = await apiClient.get("/matches", { params });
       setMatches(data.data?.matches || []);
+      setAppliedFilters(filters);
     } catch (err) {
       setErrorMsg(err.response?.data?.message || "Failed to load matches");
       setMatches([]);
@@ -81,8 +80,11 @@ const Discover = () => {
   };
 
   return (
-    <div style={{ maxWidth: "760px", margin: "24px auto", padding: "0 16px" }}>
-      <h1 style={{ fontSize: "20px", color: "#0f172a" }}>Discover partners</h1>
+    <div style={{ maxWidth: "1040px", margin: "24px auto", padding: "0 16px" }}>
+      <h1 style={{ fontSize: "26px", color: "#0f172a", margin: "0 0 4px" }}>Discover partners</h1>
+      <p style={{ fontSize: "14px", color: "#64748b", margin: "0 0 20px" }}>
+        Ranked by a weighted match score across activity, location, availability, skill level, and rating.
+      </p>
 
       <form
         onSubmit={runSearch}
@@ -94,7 +96,7 @@ const Discover = () => {
           backgroundColor: "#fff",
           border: "1px solid #e2e8f0",
           borderRadius: "10px",
-          marginBottom: "20px",
+          marginBottom: "24px",
         }}
       >
         <select value={filters.activity} onChange={(e) => setFilter("activity", e.target.value)} style={inputStyle}>
@@ -164,77 +166,25 @@ const Discover = () => {
       {errorMsg && <p style={{ color: "#dc2626" }}>{errorMsg}</p>}
       {!loading && matches && matches.length === 0 && <p style={{ color: "#64748b" }}>No partners found.</p>}
 
-      <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-        {matches?.map(({ profile, matchScore, matchQuality }) => (
-          <div
-            key={profile._id}
-            style={{
-              padding: "16px",
-              backgroundColor: "#fff",
-              border: "1px solid #e2e8f0",
-              borderRadius: "10px",
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              gap: "12px",
-              flexWrap: "wrap",
-            }}
-          >
-            <div>
-              <div style={{ fontWeight: 600, color: "#0f172a" }}>
-                {profile.user?.name || profile.user?.email}{" "}
-                <span
-                  style={{
-                    fontSize: "12px",
-                    fontWeight: 500,
-                    color: qualityColor[matchQuality] || "#64748b",
-                  }}
-                >
-                  {matchQuality} ({matchScore}%)
-                </span>
-              </div>
-              <div style={{ fontSize: "13px", color: "#64748b", marginTop: "4px" }}>
-                {profile.skillLevel} · {profile.location?.city || "no city set"} ·{" "}
-                {(profile.activities || []).map((a) => a.name).join(", ") || "no activities"}
-              </div>
-              <div style={{ marginTop: "4px" }}>
-                <OnlineStatus userId={profile.user?._id} />
-              </div>
-            </div>
-
-            <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-              <Link
-                to={`/chat/${profile.user._id}?name=${encodeURIComponent(profile.user.name || "")}`}
-                style={{ fontSize: "13px", color: "#2563eb" }}
-              >
-                Message
-              </Link>
-              <button
-                type="button"
-                onClick={() => sendRequest(profile.user._id)}
-                disabled={requestStatus[profile.user._id] === "sending" || requestStatus[profile.user._id] === "sent"}
-                style={{
-                  padding: "6px 12px",
-                  fontSize: "13px",
-                  color: "#fff",
-                  backgroundColor: requestStatus[profile.user._id] === "sent" ? "#16a34a" : "#2563eb",
-                  border: "none",
-                  borderRadius: "6px",
-                  cursor: "pointer",
-                }}
-              >
-                {requestStatus[profile.user._id] === "sent"
-                  ? "Request sent"
-                  : requestStatus[profile.user._id] === "sending"
-                    ? "Sending..."
-                    : "Send request"}
-              </button>
-              {requestStatus[profile.user._id] &&
-                !["sending", "sent"].includes(requestStatus[profile.user._id]) && (
-                  <span style={{ fontSize: "12px", color: "#dc2626" }}>{requestStatus[profile.user._id]}</span>
-                )}
-            </div>
-          </div>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fill, minmax(360px, 1fr))",
+          gap: "16px",
+        }}
+      >
+        {matches?.map((match, index) => (
+          <MatchCard
+            key={match.profile._id}
+            rank={index + 1}
+            profile={match.profile}
+            matchScore={match.matchScore}
+            matchQuality={match.matchQuality}
+            matchBreakdown={match.matchBreakdown}
+            appliedFilters={appliedFilters}
+            requestState={requestStatus[match.profile.user._id]}
+            onSendRequest={() => sendRequest(match.profile.user._id)}
+          />
         ))}
       </div>
     </div>
