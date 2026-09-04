@@ -1,37 +1,38 @@
-const express = require('express')
-const cors=require('cors')
-const cookieParser=require('cookie-parser')
+const express = require("express");
+const cors = require("cors");
+const cookieParser = require("cookie-parser");
 
-const apiRoutes=require('./routes')
-const notFound=require('./middlewares/notFound.middleware')
-const errorHandler=require('./middlewares/error.midlleware')
+const apiRoutes = require("./routes");
+const notFound = require("./middlewares/notFound.middleware");
+const errorHandler = require("./middlewares/error.midlleware");
 
-const app=express()
-//cors
+/**
+ * Express Application initialization and middleware pipeline setup.
+ */
+const app = express();
+
+// --- CORS CONFIGURATION ---
 app.use(
     cors({
-        origin:process.env.CLIENT_URL||"http://localhost:5173",
-        credentials:true
+        origin: process.env.CLIENT_URL || "http://localhost:5173",
+        credentials: true,
     })
 );
 
-//body parser
-app.use(express.json())
-app.use(express.urlencoded({extended:true}))
+// --- BODY PARSERS ---
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-//cookie-parser
-app.use(cookieParser())
+// --- COOKIE PARSER ---
+app.use(cookieParser());
 
+// --- API ROUTES ---
+app.use("/api", apiRoutes);
 
-//API routes
-app.use('/api',apiRoutes)
+// --- 404 NOT FOUND MIDDLEWARE ---
+app.use(notFound);
 
-//404 handler
-app.use(notFound)
+// --- GLOBAL ERROR HANDLER ---
+app.use(errorHandler);
 
-//Global errorhandler
-app.use(errorHandler)
-
-
-
-module.exports=app;
+module.exports = app;

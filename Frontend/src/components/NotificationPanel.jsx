@@ -1,9 +1,15 @@
 import React, { useState } from "react";
 import { useSocket } from "../context/SocketContext";
 
+/**
+ * NotificationPanel component renders a floating bell button with unread count badge
+ * and an interactive dropdown panel displaying user notifications.
+ */
 export const NotificationPanel = () => {
+  // Toggle state for displaying the notifications dropdown panel
   const [isOpen, setIsOpen] = useState(false);
 
+  // Consume notification state and action handlers from SocketContext
   const {
     notifications,
     unreadNotificationCount,
@@ -12,10 +18,19 @@ export const NotificationPanel = () => {
     markAllAsRead,
   } = useSocket();
 
+  /**
+   * Toggles the open/closed state of the notification dropdown panel.
+   */
   const togglePanel = () => {
     setIsOpen((prev) => !prev);
   };
 
+  /**
+   * Handles user click on an individual notification item.
+   * Marks the notification as read if it hasn't been read yet.
+   *
+   * @param {Object} notification - The clicked notification item.
+   */
   const handleItemClick = (notification) => {
     if (!notification.isRead) {
       markAsRead(notification._id);

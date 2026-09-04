@@ -1,9 +1,19 @@
 const Notification = require("../models/notification.model");
-
 const { getUserSocketIds } = require("./presence.service");
 const { getIO } = require("../socket/socket");
 
-
+/**
+ * Creates a notification in MongoDB and emits a real-time socket event if recipient is online.
+ *
+ * @param {Object} params - Notification details.
+ * @param {string} params.recipient - Recipient User ID.
+ * @param {string|null} [params.sender] - Optional sender User ID.
+ * @param {string} params.type - Type category of notification.
+ * @param {string} params.message - Notification message content.
+ * @param {string|null} [params.relatedRequest] - Optional PartnerRequest ID reference.
+ * @param {string|null} [params.relatedMatch] - Optional Match ID reference.
+ * @returns {Promise<Object>} Created database notification object.
+ */
 const createNotification = async ({
     recipient,
     sender = null,
@@ -12,8 +22,7 @@ const createNotification = async ({
     relatedRequest = null,
     relatedMatch = null,
 }) => {
-
-    // 1. Save notification in MongoDB
+    // 1. Save notification document in MongoDB
     const notification = await Notification.create({
         recipient,
         sender,
@@ -23,34 +32,31 @@ const createNotification = async ({
         relatedMatch,
     });
 
-
-    // 2. Get recipient's active socket connections
+    // 2. Retrieve active socket IDs for recipient
     const socketIds = getUserSocketIds(recipient);
 
-
-    // 3. Get Socket.IO instance
+    // 3. Get global Socket.io instance
     const io = getIO();
 
-
-    // 4. Send notification in real time
+    // 4. Emit notification in real time to connected recipient sockets
     if (io && socketIds.length > 0) {
-
         socketIds.forEach((socketId) => {
-
-            io.to(socketId).emit(
-                "notification:new",
-                {
-                    notification,
-                }
-            );
-
+            io.to(socketId).emit("notification:new", {
+                notification,
+            });
         });
     }
-
 
     return notification;
 };
 
+/**
+ * Fetches notifications for a user, ordered by newest first, and returns unread count.
+ *
+ * @param {string} userId - User ID.
+ * @param {number} [limit=50] - Maximum number of notifications to retrieve.
+ * @returns {Promise<{notifications: Array, unreadCount: number}>} User notifications payload.
+ */
 const getUserNotifications = async (userId, limit = 50) => {
     const notifications = await Notification.find({ recipient: userId })
         .sort({ createdAt: -1 })
@@ -68,6 +74,13 @@ const getUserNotifications = async (userId, limit = 50) => {
     };
 };
 
+/**
+ * Marks a specific notification as read by ID for a user.
+ *
+ * @param {string} notificationId - Notification object ID.
+ * @param {string} userId - Recipient User ID.
+ * @returns {Promise<{notification: Object, unreadCount: number}>} Updated notification and unread count.
+ */
 const markAsRead = async (notificationId, userId) => {
     const notification = await Notification.findOneAndUpdate(
         { _id: notificationId, recipient: userId },
@@ -92,6 +105,12 @@ const markAsRead = async (notificationId, userId) => {
     };
 };
 
+/**
+ * Marks all notifications for a specific user as read.
+ *
+ * @param {string} userId - User ID.
+ * @returns {Promise<{unreadCount: number}>} Object containing zero unread count.
+ */
 const markAllAsRead = async (userId) => {
     await Notification.updateMany(
         { recipient: userId, isRead: false },
@@ -108,4 +127,4 @@ module.exports = {
     getUserNotifications,
     markAsRead,
     markAllAsRead,
-};
+};

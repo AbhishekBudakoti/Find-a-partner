@@ -2,7 +2,12 @@ import React from "react";
 import NotificationPanel from "./NotificationPanel";
 import { useSocket } from "../context/SocketContext";
 
+/**
+ * NotificationTest component serves as a test/demo page for socket notifications,
+ * displaying both the dropdown bell component and a full inline notification list with controls.
+ */
 export const NotificationTest = () => {
+  // Consume notification state and controls from SocketContext
   const {
     notifications,
     unreadNotificationCount,
