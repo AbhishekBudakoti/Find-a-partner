@@ -7,6 +7,6 @@ const { protect } = require('../middlewares/auth.middleware')
 const router = express.Router()
 
 router.get("/:userId", protect, getChatHistory)
-router.patch("/:userId", protect, markMessagesAsRead)
+router.patch("/:userId/read", protect, markMessagesAsRead)
 
 module.exports = router;

@@ -15,9 +15,9 @@ router.use(protect);
 
 router.post("/",asyncHandler(createProfile))
 
-router.post("/me",asyncHandler(getMyProfile))
+router.get("/me",asyncHandler(getMyProfile))
 
-router.post("/me",asyncHandler(updateMyProfile))
+router.patch("/me",asyncHandler(updateMyProfile))
 
 
 module.exports = router;

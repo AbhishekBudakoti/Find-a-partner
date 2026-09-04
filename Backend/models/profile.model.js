@@ -18,7 +18,13 @@ const profileSchema=new mongoose.Schema({
         maxlength:[200,"Bio cannot exceed 200 charchters"],
         default:""
     },
-    activities:{
+    activities:[
+        {
+            type:mongoose.Schema.Types.ObjectId,
+            ref:"Activity"
+        }
+    ],
+    skillLevel:{
         type:String,
         enum:["beginner", "intermediate", "advanced"],
         default:"beginner"
@@ -44,6 +50,10 @@ const profileSchema=new mongoose.Schema({
                     type:String,
                     required:true
                 },
+                endTime:{
+                    type:String,
+                    required:true
+                },
             },
         ],
         default:[],
@@ -52,8 +62,7 @@ const profileSchema=new mongoose.Schema({
     location:{
         city:{
             type:String,
-            required:true,
-            default:"",    
+            default:"",
         },
         coordinates:{
             type:[Number],

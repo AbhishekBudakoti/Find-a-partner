@@ -7,7 +7,7 @@ const getChatHistory = async (req, res, next) => {
         const recipientId = req.params.userId;
 
 
-        const message = await Message.find({
+        const messages = await Message.find({
             $or: [
                 {
                     sender: userId,
@@ -25,7 +25,7 @@ const getChatHistory = async (req, res, next) => {
         res.status(200).json({
             success: true,
             message: "Chat history fetched successfully",
-            data: { message }
+            data: { messages }
         })
     }
 
@@ -51,7 +51,7 @@ const markMessagesAsRead = async (req, res, next) => {
         });
 
         res.status(200).json({
-            sucess: true,
+            success: true,
             message: "Message Marked As Read"
 
         })

@@ -1,4 +1,5 @@
 const PartnerRequest = require("../models/partnerRequest.model");
+const Match = require("../models/match.model");
 const { createNotification } = require("../services/notification.service");
 
 const createRequest = async (req, res, next) => {
@@ -114,6 +115,18 @@ const acceptRequest = async (req, res, next) => {
         request.status = "accepted";
         await request.save();
 
+        // Form the partnership record. Reuse an existing match for this pair
+        // if one is already on file (e.g. a prior request between the same users).
+        let match = await Match.findOne({
+            users: { $all: [request.sender, request.recipient] },
+        });
+
+        if (!match) {
+            match = await Match.create({
+                users: [request.sender, request.recipient],
+                request: request._id,
+            });
+        }
 
         await createNotification({
             recipient: request.sender,
@@ -123,10 +136,30 @@ const acceptRequest = async (req, res, next) => {
             relatedRequest: request._id
         });
 
+        // Notify both partners that a match now exists.
+        await Promise.all([
+            createNotification({
+                recipient: request.sender,
+                sender: request.recipient,
+                type: "match_created",
+                message: "You have a new partner! Say hello.",
+                relatedRequest: request._id,
+                relatedMatch: match._id,
+            }),
+            createNotification({
+                recipient: request.recipient,
+                sender: request.sender,
+                type: "match_created",
+                message: "You have a new partner! Say hello.",
+                relatedRequest: request._id,
+                relatedMatch: match._id,
+            }),
+        ]);
+
         res.status(200).json({
             success: true,
             message: "partner request accepted",
-            data: { request }
+            data: { request, match }
         })
 
     }

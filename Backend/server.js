@@ -5,6 +5,7 @@ const http = require("http");
 const app = require("./app");
 const connectDB = require("./config/db");
 const initializeSocket = require("./socket/socket");
+const { startRequestExpiryJob } = require("./services/requestExpiry.service");
 
 // Application server port configuration
 const PORT = process.env.PORT || 5000;
@@ -23,7 +24,10 @@ const startServer = async () => {
         // 1. Establish MongoDB connection
         await connectDB();
 
-        // 2. Start HTTP & Socket listener
+        // 2. Start background job that expires stale pending requests
+        startRequestExpiryJob();
+
+        // 3. Start HTTP & Socket listener
         server.listen(PORT, () => {
             console.log(`Server running at http://localhost:${PORT}`);
         });

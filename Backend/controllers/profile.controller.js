@@ -45,7 +45,7 @@ const createProfile = async(req,res) =>{
 
     await profile.populate("activities");
 
-    return successResponse(res,{profile},"Profile created successfully",200)
+    return successResponse(res,{profile},"Profile created successfully",201)
 }
 
 
@@ -90,6 +90,11 @@ const updateMyProfile = async (req,res) =>{
             isActive:true
         })
 
+        if(validActivities !== activities.length){
+            const error = new Error ("One or more activities are invalid")
+            error.statusCode=400
+            throw error;
+        }
 
         profile.activities=activities
     }
