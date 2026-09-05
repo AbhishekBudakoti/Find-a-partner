@@ -1,12 +1,9 @@
 const { Server } = require("socket.io");
 const jwt = require("jsonwebtoken");
-const cookieModule = require("cookie");
-const parseCookie =
-    typeof cookieModule.parse === "function"
-        ? cookieModule.parse
-        : typeof cookieModule === "function"
-        ? cookieModule
-        : cookieModule.default?.parse;
+// cookie v2 renamed its exports: parse/serialize became
+// parseCookie/stringifyCookie. Import the name directly so a future rename
+// fails loudly at boot instead of silently rejecting every socket handshake.
+const { parseCookie } = require("cookie");
 
 const Message = require("../models/message.model");
 const PartnerRequest = require("../models/partnerRequest.model");
@@ -47,7 +44,7 @@ const initializeSocket = (server) => {
                 return next(new Error("Authentication required"));
             }
 
-            const cookies = parseCookie ? parseCookie(cookieHeader) : {};
+            const cookies = parseCookie(cookieHeader);
             const token = cookies?.token;
 
             if (!token) {

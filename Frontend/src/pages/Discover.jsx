@@ -2,7 +2,16 @@ import { useEffect, useState } from "react";
 import apiClient from "../api/client";
 import MatchCard from "../components/MatchCard";
 
-const DAYS = ["", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
+const DAYS = [
+  "",
+  "monday",
+  "tuesday",
+  "wednesday",
+  "thursday",
+  "friday",
+  "saturday",
+  "sunday",
+];
 const SKILL_LEVELS = ["", "beginner", "intermediate", "advanced"];
 
 const inputStyle = {
@@ -41,14 +50,17 @@ const Discover = () => {
       .catch(() => {});
   }, []);
 
-  const setFilter = (field, value) => setFilters((prev) => ({ ...prev, [field]: value }));
+  const setFilter = (field, value) =>
+    setFilters((prev) => ({ ...prev, [field]: value }));
 
   const runSearch = async (event) => {
     event?.preventDefault();
     setLoading(true);
     setErrorMsg("");
     try {
-      const params = Object.fromEntries(Object.entries(filters).filter(([, v]) => v));
+      const params = Object.fromEntries(
+        Object.entries(filters).filter(([, v]) => v),
+      );
       const { data } = await apiClient.get("/matches", { params });
       setMatches(data.data?.matches || []);
       setAppliedFilters(filters);
@@ -69,7 +81,10 @@ const Discover = () => {
   const sendRequest = async (recipientId) => {
     setRequestStatus((prev) => ({ ...prev, [recipientId]: "sending" }));
     try {
-      await apiClient.post("/requests", { recipient: recipientId, message: "Let's team up!" });
+      await apiClient.post("/requests", {
+        recipient: recipientId,
+        message: "Let's team up!",
+      });
       setRequestStatus((prev) => ({ ...prev, [recipientId]: "sent" }));
     } catch (err) {
       setRequestStatus((prev) => ({
@@ -81,9 +96,12 @@ const Discover = () => {
 
   return (
     <div style={{ maxWidth: "1040px", margin: "24px auto", padding: "0 16px" }}>
-      <h1 style={{ fontSize: "26px", color: "#0f172a", margin: "0 0 4px" }}>Discover partners</h1>
+      <h1 style={{ fontSize: "26px", color: "#0f172a", margin: "0 0 4px" }}>
+        Discover partners
+      </h1>
       <p style={{ fontSize: "14px", color: "#64748b", margin: "0 0 20px" }}>
-        Ranked by a weighted match score across activity, location, availability, skill level, and rating.
+        Ranked by a weighted match score across activity, location,
+        availability, skill level, and rating.
       </p>
 
       <form
@@ -99,7 +117,11 @@ const Discover = () => {
           marginBottom: "24px",
         }}
       >
-        <select value={filters.activity} onChange={(e) => setFilter("activity", e.target.value)} style={inputStyle}>
+        <select
+          value={filters.activity}
+          onChange={(e) => setFilter("activity", e.target.value)}
+          style={inputStyle}
+        >
           <option value="">Any activity</option>
           {activityOptions.map((a) => (
             <option key={a._id} value={a._id}>
@@ -116,7 +138,11 @@ const Discover = () => {
           style={inputStyle}
         />
 
-        <select value={filters.day} onChange={(e) => setFilter("day", e.target.value)} style={inputStyle}>
+        <select
+          value={filters.day}
+          onChange={(e) => setFilter("day", e.target.value)}
+          style={inputStyle}
+        >
           {DAYS.map((day) => (
             <option key={day} value={day}>
               {day || "Any day"}
@@ -137,7 +163,11 @@ const Discover = () => {
           style={inputStyle}
         />
 
-        <select value={filters.skillLevel} onChange={(e) => setFilter("skillLevel", e.target.value)} style={inputStyle}>
+        <select
+          value={filters.skillLevel}
+          onChange={(e) => setFilter("skillLevel", e.target.value)}
+          style={inputStyle}
+        >
           {SKILL_LEVELS.map((level) => (
             <option key={level} value={level}>
               {level || "Any skill level"}
@@ -164,7 +194,9 @@ const Discover = () => {
 
       {loading && <p style={{ color: "#64748b" }}>Loading matches...</p>}
       {errorMsg && <p style={{ color: "#dc2626" }}>{errorMsg}</p>}
-      {!loading && matches && matches.length === 0 && <p style={{ color: "#64748b" }}>No partners found.</p>}
+      {!loading && matches && matches.length === 0 && (
+        <p style={{ color: "#64748b" }}>No partners found.</p>
+      )}
 
       <div
         style={{
