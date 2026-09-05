@@ -186,6 +186,19 @@ const initializeSocket = (server) => {
             });
         });
 
+        // --- REAL-TIME SESSION ROOM EVENTS ---
+        socket.on("session:join", ({ sessionId }) => {
+            if (!sessionId) return;
+            socket.join(`session:${sessionId}`);
+            console.log(`Socket ${socket.id} joined session room: session:${sessionId}`);
+        });
+
+        socket.on("session:leave", ({ sessionId }) => {
+            if (!sessionId) return;
+            socket.leave(`session:${sessionId}`);
+            console.log(`Socket ${socket.id} left session room: session:${sessionId}`);
+        });
+
         // --- DISCONNECT HANDLER ---
         socket.on("disconnect", () => {
             console.log(`Socket disconnected: ${socket.id}`);

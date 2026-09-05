@@ -12,6 +12,7 @@ const { getIO } = require("../socket/socket");
  * @param {string} params.message - Notification message content.
  * @param {string|null} [params.relatedRequest] - Optional PartnerRequest ID reference.
  * @param {string|null} [params.relatedMatch] - Optional Match ID reference.
+ * @param {string|null} [params.relatedSession] - Optional Session ID reference.
  * @returns {Promise<Object>} Created database notification object.
  */
 const createNotification = async ({
@@ -21,6 +22,7 @@ const createNotification = async ({
     message,
     relatedRequest = null,
     relatedMatch = null,
+    relatedSession = null,
 }) => {
     // 1. Save notification document in MongoDB
     const notification = await Notification.create({
@@ -30,6 +32,7 @@ const createNotification = async ({
         message,
         relatedRequest,
         relatedMatch,
+        relatedSession,
     });
 
     // 2. Retrieve active socket IDs for recipient

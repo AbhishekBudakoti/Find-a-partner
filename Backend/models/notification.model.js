@@ -15,11 +15,18 @@ const notificationSchema =new mongoose.Schema({
 
     type:{
         type:String,
-        enum:["partner_request",
-                "request_accepted",
-                "request_rejected",
-                "request_cancelled",
-                "match_created"],
+        enum:[
+            "partner_request",
+            "request_accepted",
+            "request_rejected",
+            "request_cancelled",
+            "match_created",
+            "session_proposed",
+            "session_accepted",
+            "session_rejected",
+            "session_cancelled",
+            "session_reminder"
+        ],
         required:true,
     },
 
@@ -38,6 +45,11 @@ const notificationSchema =new mongoose.Schema({
     relatedMatch:{
         type: mongoose.Schema.Types.ObjectId,
         ref:"Match",
+        default:null        
+    },
+    relatedSession:{
+        type: mongoose.Schema.Types.ObjectId,
+        ref:"Session",
         default:null        
     },
     isRead:{

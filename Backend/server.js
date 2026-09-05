@@ -6,6 +6,7 @@ const app = require("./app");
 const connectDB = require("./config/db");
 const initializeSocket = require("./socket/socket");
 const { startRequestExpiryJob } = require("./services/requestExpiry.service");
+const { startSessionLifecycleJob } = require("./services/sessionLifecycle.service");
 
 // Application server port configuration
 const PORT = process.env.PORT || 5000;
@@ -24,8 +25,9 @@ const startServer = async () => {
         // 1. Establish MongoDB connection
         await connectDB();
 
-        // 2. Start background job that expires stale pending requests
+        // 2. Start background jobs
         startRequestExpiryJob();
+        startSessionLifecycleJob();
 
         // 3. Start HTTP & Socket listener
         server.listen(PORT, () => {
