@@ -4,70 +4,51 @@ import NotificationPanel from "../components/NotificationPanel";
 import { useAuth } from "../context/AuthContext";
 import { useSocket } from "../context/SocketContext";
 
-const navLinkStyle = ({ isActive }) => ({
-  fontSize: "14px",
-  fontWeight: 500,
-  color: isActive ? "#2563eb" : "#475569",
-  textDecoration: "none",
-});
+const navLinkClass = ({ isActive }) =>
+  `text-sm font-medium transition-colors ${
+    isActive ? "text-blue-600 font-semibold" : "text-slate-600 hover:text-slate-900"
+  }`;
 
 const Layout = () => {
   const { user } = useAuth();
   const { connected } = useSocket() || {};
 
   return (
-    <div style={{ minHeight: "100vh", backgroundColor: "#f8fafc" }}>
-      <header
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          padding: "12px 24px",
-          backgroundColor: "#ffffff",
-          borderBottom: "1px solid #e2e8f0",
-          boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
-          flexWrap: "wrap",
-          gap: "12px",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
-          <h1 style={{ margin: 0, fontSize: "20px", color: "#0f172a" }}>Find a Partner</h1>
+    <div className="min-h-screen bg-slate-50">
+      <header className="flex items-center justify-between px-6 py-3 bg-white border-b border-slate-200 shadow-xs flex-wrap gap-3">
+        <div className="flex items-center gap-5">
+          <h1 className="m-0 text-xl font-bold text-slate-900">Find a Partner</h1>
 
           {user && (
-            <nav style={{ display: "flex", gap: "16px" }}>
-              <NavLink to="/discover" style={navLinkStyle}>
+            <nav className="flex gap-4">
+              <NavLink to="/discover" className={navLinkClass}>
                 Discover
               </NavLink>
-              <NavLink to="/requests" style={navLinkStyle}>
+              <NavLink to="/requests" className={navLinkClass}>
                 Requests
               </NavLink>
-              <NavLink to="/profile" style={navLinkStyle}>
+              <NavLink to="/profile" className={navLinkClass}>
                 Profile
               </NavLink>
             </nav>
           )}
 
           <span
-            style={{
-              fontSize: "12px",
-              padding: "2px 8px",
-              borderRadius: "12px",
-              backgroundColor: connected ? "#dcfce7" : "#fee2e2",
-              color: connected ? "#166534" : "#991b1b",
-              fontWeight: "500",
-            }}
+            className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+              connected ? "bg-emerald-100 text-emerald-800" : "bg-red-100 text-red-800"
+            }`}
           >
             {connected ? "Socket Connected" : "Disconnected"}
           </span>
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+        <div className="flex items-center gap-4">
           <AuthBar />
           {user && <NotificationPanel />}
         </div>
       </header>
 
-      <main style={{ padding: "0 0 40px" }}>
+      <main className="pb-10">
         <Outlet />
       </main>
     </div>
