@@ -7,6 +7,7 @@ const { parseCookie } = require("cookie");
 
 const Message = require("../models/message.model");
 const PartnerRequest = require("../models/partnerRequest.model");
+const Session = require("../models/session.model");
 const {
     addUserSocket,
     removeUserSocket,
@@ -187,10 +188,34 @@ const initializeSocket = (server) => {
         });
 
         // --- REAL-TIME SESSION ROOM EVENTS ---
-        socket.on("session:join", ({ sessionId }) => {
+        socket.on("session:join", async ({ sessionId }) => {
             if (!sessionId) return;
-            socket.join(`session:${sessionId}`);
-            console.log(`Socket ${socket.id} joined session room: session:${sessionId}`);
+
+            try {
+                // Only participants may join — otherwise anyone holding a session
+                // id would receive its schedule, location and reminders.
+                const session = await Session.findById(sessionId).select("participants");
+
+                if (!session) {
+                    return socket.emit("session:error", { message: "Session not found" });
+                }
+
+                const isParticipant = session.participants.some(
+                    (p) => p.toString() === (socket.user.id || socket.user._id).toString()
+                );
+
+                if (!isParticipant) {
+                    return socket.emit("session:error", {
+                        message: "You are not a participant in this session",
+                    });
+                }
+
+                socket.join(`session:${sessionId}`);
+                console.log(`Socket ${socket.id} joined session room: session:${sessionId}`);
+            } catch (error) {
+                console.error("Session join error:", error);
+                socket.emit("session:error", { message: "Failed to join session" });
+            }
         });
 
         socket.on("session:leave", ({ sessionId }) => {

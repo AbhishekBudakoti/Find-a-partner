@@ -25,10 +25,16 @@ const sweepSessionLifecycle = async () => {
     { $set: { status: Session.SESSION_STATUSES.UPCOMING } }
   );
 
-  // 2. upcoming -> active (when now >= scheduledAt)
+  // 2. upcoming/accepted -> active (when now >= scheduledAt)
   const activeResult = await Session.updateMany(
     {
-      status: Session.SESSION_STATUSES.UPCOMING,
+      status: {
+        $in: [
+          Session.SESSION_STATUSES.UPCOMING,
+          // Catch sessions the 24h sweep missed (server was down, etc.)
+          Session.SESSION_STATUSES.ACCEPTED,
+        ],
+      },
       scheduledAt: { $lte: now },
     },
     { $set: { status: Session.SESSION_STATUSES.ACTIVE } }

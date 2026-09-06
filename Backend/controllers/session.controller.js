@@ -1,6 +1,7 @@
 const mongoose = require("mongoose");
 const Session = require("../models/session.model");
 const Match = require("../models/match.model");
+const Activity = require("../models/activity.model");
 const asyncHandler = require("../middlewares/asyncHandler");
 const { successResponse } = require("../utils/response");
 const { createNotification } = require("../services/notification.service");
@@ -30,6 +31,25 @@ const proposeSession = asyncHandler(async (req, res) => {
 
   if (!mongoose.Types.ObjectId.isValid(matchId)) {
     const error = new Error("Invalid match ID");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  if (!mongoose.Types.ObjectId.isValid(activity)) {
+    const error = new Error("Invalid activity ID");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  // A well-formed ObjectId can still point at nothing — verify it exists and
+  // is active, the same way createProfile does.
+  const activityExists = await Activity.countDocuments({
+    _id: activity,
+    isActive: true,
+  });
+
+  if (!activityExists) {
+    const error = new Error("Activity not found");
     error.statusCode = 400;
     throw error;
   }
@@ -89,7 +109,7 @@ const proposeSession = asyncHandler(async (req, res) => {
     .populate("activity", "name")
     .populate("proposedBy", "name email");
 
-  return successResponse(res, populatedSession, "Session proposed successfully", 201);
+  return successResponse(res, { session: populatedSession }, "Session proposed successfully", 201);
 });
 
 /**
@@ -109,7 +129,10 @@ const getSessions = asyncHandler(async (req, res) => {
     filter.status = req.query.status;
   }
 
-  if (req.query.upcoming === "true" || req.query.upcoming === "1") {
+  const isUpcoming =
+    req.query.upcoming === "true" || req.query.upcoming === "1";
+
+  if (isUpcoming) {
     filter.scheduledAt = { $gte: new Date() };
   }
 
@@ -119,7 +142,9 @@ const getSessions = asyncHandler(async (req, res) => {
     .populate("activity", "name")
     .populate("proposedBy", "name email")
     .populate("cancelledBy", "name email")
-    .sort({ scheduledAt: -1 });
+    // Upcoming = soonest first (a to-do list).
+    // History = most recent first.
+    .sort({ scheduledAt: isUpcoming ? 1 : -1 });
 
   return successResponse(
     res,
@@ -165,7 +190,7 @@ const getSessionById = asyncHandler(async (req, res) => {
     throw error;
   }
 
-  return successResponse(res, session, "Session retrieved successfully");
+  return successResponse(res, { session }, "Session retrieved successfully");
 });
 
 /**
@@ -248,7 +273,7 @@ const acceptSession = asyncHandler(async (req, res) => {
     .populate("activity", "name")
     .populate("proposedBy", "name email");
 
-  return successResponse(res, updated, "Session accepted successfully");
+  return successResponse(res, { session: updated }, "Session accepted successfully");
 });
 
 /**
@@ -318,7 +343,7 @@ const rejectSession = asyncHandler(async (req, res) => {
     .populate("proposedBy", "name email")
     .populate("cancelledBy", "name email");
 
-  return successResponse(res, updated, "Session rejected successfully");
+  return successResponse(res, { session: updated }, "Session rejected successfully");
 });
 
 /**
@@ -390,7 +415,7 @@ const cancelSession = asyncHandler(async (req, res) => {
     .populate("proposedBy", "name email")
     .populate("cancelledBy", "name email");
 
-  return successResponse(res, updated, "Session cancelled successfully");
+  return successResponse(res, { session: updated }, "Session cancelled successfully");
 });
 
 /**
@@ -423,6 +448,14 @@ const completeSession = asyncHandler(async (req, res) => {
     throw error;
   }
 
+  // The transition matrix already restricts completion to `active`, but check
+  // the clock explicitly so the error message says *why*.
+  if (new Date() < session.scheduledAt) {
+    const error = new Error("Cannot complete a session that has not started yet");
+    error.statusCode = 400;
+    throw error;
+  }
+
   const transitionGuard = Session.validateStatusTransition(
     session.status,
     Session.SESSION_STATUSES.COMPLETED
@@ -444,7 +477,7 @@ const completeSession = asyncHandler(async (req, res) => {
     .populate("activity", "name")
     .populate("proposedBy", "name email");
 
-  return successResponse(res, updated, "Session marked as completed successfully");
+  return successResponse(res, { session: updated }, "Session marked as completed successfully");
 });
 
 module.exports = {
