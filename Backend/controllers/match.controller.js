@@ -1,6 +1,7 @@
 const mongoose = require("mongoose")
 
 const Profile = require("../models/profile.model")
+const Match = require("../models/match.model")
 
 const {calculateMatchScore,
   getMatchQuality} = require('../services/matching.service')
@@ -67,6 +68,44 @@ const getMatches=async (req,res)=>{
 }
 
 
+/**
+ * Lists the Match records the current user belongs to — their established
+ * partners. Distinct from getMatches(), which ranks *candidate* profiles
+ * returned by search: these are partnerships that already exist.
+ *
+ * The frontend needs these ids to propose a session (POST /api/sessions
+ * requires a match id), and needs the partner's name to render a picker.
+ */
+const getMyMatches = async (req, res) => {
+  const matches = await Match.find({
+    users: req.user.id,
+    status: "active",
+  })
+    .populate("users", "name email")
+    .sort({ createdAt: -1 });
+
+  // Surface the partner directly so the client isn't filtering the
+  // two-user array itself on every render.
+  const data = matches.map((match) => ({
+    _id: match._id,
+    status: match.status,
+    createdAt: match.createdAt,
+    partner: match.users.find(
+      (user) => user._id.toString() !== req.user.id.toString()
+    ),
+  }));
+
+  return successResponse(
+    res,
+    {
+      count: data.length,
+      matches: data,
+    },
+    "Matches fetched successfully"
+  );
+};
+
 module.exports = {
   getMatches,
+  getMyMatches,
 };
