@@ -6,6 +6,7 @@ import Register from "./pages/Register";
 import Profile from "./pages/Profile";
 import Discover from "./pages/Discover";
 import Requests from "./pages/Requests";
+import Sessions from "./pages/Sessions";
 import Chat from "./pages/Chat";
 import ProtectedRoute from "./components/ProtectedRoute";
 
@@ -21,6 +22,7 @@ function App() {
             <Route path="/profile" element={<Profile />} />
             <Route path="/discover" element={<Discover />} />
             <Route path="/requests" element={<Requests />} />
+            <Route path="/sessions" element={<Sessions />} />
             <Route path="/chat/:userId" element={<Chat />} />
           </Route>
 

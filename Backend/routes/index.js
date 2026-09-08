@@ -10,6 +10,7 @@ const requestRoutes = require("./request.routes");
 const notificationRoutes = require("./notification.routes");
 const chatRoutes = require("./chat.routes")
 const sessionRoutes = require("./session.routes")
+const reviewRoutes = require("./review.routes")
 
 const router = express.Router()
 
@@ -23,5 +24,6 @@ router.use("/requests", requestRoutes);
 router.use("/notifications", notificationRoutes);
 router.use("/chat", chatRoutes)
 router.use("/sessions", sessionRoutes)
+router.use("/reviews", reviewRoutes)
 
 module.exports = router

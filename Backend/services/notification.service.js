@@ -23,6 +23,7 @@ const createNotification = async ({
     relatedRequest = null,
     relatedMatch = null,
     relatedSession = null,
+    relatedReview = null,
 }) => {
     // 1. Save notification document in MongoDB
     const notification = await Notification.create({
@@ -33,6 +34,7 @@ const createNotification = async ({
         relatedRequest,
         relatedMatch,
         relatedSession,
+        relatedReview,
     });
 
     // 2. Retrieve active socket IDs for recipient

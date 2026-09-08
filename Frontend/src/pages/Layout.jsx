@@ -27,6 +27,9 @@ const Layout = () => {
               <NavLink to="/requests" className={navLinkClass}>
                 Requests
               </NavLink>
+              <NavLink to="/sessions" className={navLinkClass}>
+                Sessions
+              </NavLink>
               <NavLink to="/profile" className={navLinkClass}>
                 Profile
               </NavLink>

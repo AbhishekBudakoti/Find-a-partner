@@ -316,7 +316,7 @@ const rejectSession = asyncHandler(async (req, res) => {
 
   session.status = Session.SESSION_STATUSES.CANCELLED;
   session.cancelledBy = currentUserId;
-  session.cancelReason = req.body.cancelReason || "Declined by partner";
+  session.cancelReason = req.body?.cancelReason || "Declined by partner";
   await session.save();
 
   emitSessionRoomUpdate(session);
@@ -388,7 +388,7 @@ const cancelSession = asyncHandler(async (req, res) => {
 
   session.status = Session.SESSION_STATUSES.CANCELLED;
   session.cancelledBy = currentUserId;
-  session.cancelReason = req.body.cancelReason || "Cancelled by participant";
+  session.cancelReason = req.body?.cancelReason || "Cancelled by participant";
   await session.save();
 
   emitSessionRoomUpdate(session);

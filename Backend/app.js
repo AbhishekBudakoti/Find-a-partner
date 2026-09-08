@@ -23,6 +23,17 @@ app.use(
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Express 5 leaves req.body undefined when a request carries no body, where
+// Express 4 defaulted it to {}. Controllers destructure req.body directly, so
+// a bodyless POST/PATCH would throw a TypeError and surface as a 500. Restore
+// the empty-object default once here rather than guarding at every call site.
+app.use((req, res, next) => {
+    if (req.body === undefined) {
+        req.body = {};
+    }
+    next();
+});
+
 // --- COOKIE PARSER ---
 app.use(cookieParser());
 

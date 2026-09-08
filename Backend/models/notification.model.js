@@ -25,7 +25,8 @@ const notificationSchema =new mongoose.Schema({
             "session_accepted",
             "session_rejected",
             "session_cancelled",
-            "session_reminder"
+            "session_reminder",
+            "review_received"
         ],
         required:true,
     },
@@ -50,7 +51,12 @@ const notificationSchema =new mongoose.Schema({
     relatedSession:{
         type: mongoose.Schema.Types.ObjectId,
         ref:"Session",
-        default:null        
+        default:null
+    },
+    relatedReview:{
+        type: mongoose.Schema.Types.ObjectId,
+        ref:"Review",
+        default:null
     },
     isRead:{
         type:Boolean,
