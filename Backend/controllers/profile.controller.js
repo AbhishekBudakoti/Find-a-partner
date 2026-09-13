@@ -3,6 +3,7 @@ const Profile = require('../models/profile.model')
 const Activity = require('../models/activity.model')
 
 const {successResponse}=require('../utils/response')
+const {buildLocation}=require('../utils/geo')
 
 
 const createProfile = async(req,res) =>{
@@ -38,7 +39,7 @@ const createProfile = async(req,res) =>{
     activities,
     skillLevel,
     availability,
-    location,
+    location: buildLocation(location),
     })
 
 
@@ -103,7 +104,7 @@ const updateMyProfile = async (req,res) =>{
      if (bio !== undefined) profile.bio = bio;
        if (skillLevel !== undefined) profile.skillLevel = skillLevel;
   if (availability !== undefined) profile.availability = availability;
-    if (location !== undefined) profile.location = location;
+    if (location !== undefined) profile.location = buildLocation(location, profile.location?.point);
 
     await profile.save();
 

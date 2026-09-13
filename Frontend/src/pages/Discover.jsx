@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import apiClient from "../api/client";
 import MatchCard from "../components/MatchCard";
+import PartnersMap from "../components/PartnersMap";
 
 const DAYS = [
   "",
@@ -28,6 +29,7 @@ const emptyFilters = {
   startTime: "",
   endTime: "",
   skillLevel: "",
+  radiusKm: "",
 };
 
 const Discover = () => {
@@ -37,6 +39,7 @@ const Discover = () => {
   // this (not the live `filters` state) to know which breakdown categories
   // the backend scored vs. left out.
   const [appliedFilters, setAppliedFilters] = useState(emptyFilters);
+  const [viewMode, setViewMode] = useState("list");
 
   const [matches, setMatches] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -139,6 +142,18 @@ const Discover = () => {
         />
 
         <select
+          value={filters.radiusKm}
+          onChange={(e) => setFilter("radiusKm", e.target.value)}
+          style={inputStyle}
+        >
+          <option value="">Any distance</option>
+          <option value="5">5 km</option>
+          <option value="10">10 km</option>
+          <option value="25">25 km</option>
+          <option value="50">50 km</option>
+        </select>
+
+        <select
           value={filters.day}
           onChange={(e) => setFilter("day", e.target.value)}
           style={inputStyle}
@@ -192,33 +207,80 @@ const Discover = () => {
         </button>
       </form>
 
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+        <span style={{ fontSize: "14px", color: "#64748b", fontWeight: 500 }}>
+          {matches ? `${matches.length} ${matches.length === 1 ? "partner" : "partners"} found` : ""}
+        </span>
+        <div style={{ display: "flex", gap: "4px", backgroundColor: "#f1f5f9", padding: "4px", borderRadius: "8px" }}>
+          <button
+            type="button"
+            onClick={() => setViewMode("list")}
+            style={{
+              padding: "6px 12px",
+              fontSize: "13px",
+              fontWeight: 600,
+              borderRadius: "6px",
+              border: "none",
+              cursor: "pointer",
+              backgroundColor: viewMode === "list" ? "#ffffff" : "transparent",
+              color: viewMode === "list" ? "#0f172a" : "#64748b",
+              boxShadow: viewMode === "list" ? "0 1px 2px rgba(0,0,0,0.05)" : "none",
+            }}
+          >
+            📋 List
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode("map")}
+            style={{
+              padding: "6px 12px",
+              fontSize: "13px",
+              fontWeight: 600,
+              borderRadius: "6px",
+              border: "none",
+              cursor: "pointer",
+              backgroundColor: viewMode === "map" ? "#ffffff" : "transparent",
+              color: viewMode === "map" ? "#0f172a" : "#64748b",
+              boxShadow: viewMode === "map" ? "0 1px 2px rgba(0,0,0,0.05)" : "none",
+            }}
+          >
+            🗺️ Map
+          </button>
+        </div>
+      </div>
+
       {loading && <p style={{ color: "#64748b" }}>Loading matches...</p>}
       {errorMsg && <p style={{ color: "#dc2626" }}>{errorMsg}</p>}
       {!loading && matches && matches.length === 0 && (
         <p style={{ color: "#64748b" }}>No partners found.</p>
       )}
 
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(360px, 1fr))",
-          gap: "16px",
-        }}
-      >
-        {matches?.map((match, index) => (
-          <MatchCard
-            key={match.profile._id}
-            rank={index + 1}
-            profile={match.profile}
-            matchScore={match.matchScore}
-            matchQuality={match.matchQuality}
-            matchBreakdown={match.matchBreakdown}
-            appliedFilters={appliedFilters}
-            requestState={requestStatus[match.profile.user._id]}
-            onSendRequest={() => sendRequest(match.profile.user._id)}
-          />
-        ))}
-      </div>
+      {viewMode === "map" ? (
+        <PartnersMap matches={matches || []} />
+      ) : (
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fill, minmax(360px, 1fr))",
+            gap: "16px",
+          }}
+        >
+          {matches?.map((match, index) => (
+            <MatchCard
+              key={match.profile._id}
+              rank={index + 1}
+              profile={match.profile}
+              matchScore={match.matchScore}
+              matchQuality={match.matchQuality}
+              matchBreakdown={match.matchBreakdown}
+              distanceKm={match.distanceKm}
+              appliedFilters={appliedFilters}
+              requestState={requestStatus[match.profile.user._id]}
+              onSendRequest={() => sendRequest(match.profile.user._id)}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 };

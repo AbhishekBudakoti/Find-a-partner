@@ -32,6 +32,9 @@ const Profile = () => {
   const [bio, setBio] = useState("");
   const [skillLevel, setSkillLevel] = useState("beginner");
   const [city, setCity] = useState("");
+  const [coords, setCoords] = useState(null);
+  const [locating, setLocating] = useState(false);
+  const [locationCaptured, setLocationCaptured] = useState(false);
   const [activities, setActivities] = useState([]);
   const [availability, setAvailability] = useState([emptyRow()]);
 
@@ -57,6 +60,10 @@ const Profile = () => {
           setBio(profile.bio || "");
           setSkillLevel(profile.skillLevel || "beginner");
           setCity(profile.location?.city || "");
+          if (profile.location?.point?.coordinates) {
+            const [lng, lat] = profile.location.point.coordinates;
+            setCoords({ lat, lng });
+          }
           setActivities((profile.activities || []).map((a) => a._id || a));
           setAvailability(
             profile.availability?.length
@@ -76,6 +83,27 @@ const Profile = () => {
 
     load();
   }, []);
+
+  const handleGetLocation = () => {
+    if (!navigator.geolocation) {
+      setErrorMsg("Geolocation is not supported by your browser");
+      return;
+    }
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        setLocationCaptured(true);
+        setErrorMsg("");
+        setLocating(false);
+      },
+      (err) => {
+        setErrorMsg(err.code === 1 ? "Location permission denied" : "Couldn't get location");
+        setLocating(false);
+      },
+      { timeout: 10000, maximumAge: 300000 }
+    );
+  };
 
   const toggleActivity = (id) => {
     setActivities((prev) => (prev.includes(id) ? prev.filter((a) => a !== id) : [...prev, id]));
@@ -98,7 +126,7 @@ const Profile = () => {
       bio,
       skillLevel,
       activities,
-      location: { city },
+      location: { city, ...(coords && coords) },
       availability: availability.filter((row) => row.startTime && row.endTime),
     };
 
@@ -111,6 +139,7 @@ const Profile = () => {
         setHasProfile(true);
         setStatusMsg("Profile created");
       }
+      setLocationCaptured(false);
     } catch (err) {
       setErrorMsg(err.response?.data?.message || "Failed to save profile");
     } finally {
@@ -164,6 +193,31 @@ const Profile = () => {
             style={{ ...inputStyle, marginTop: "4px" }}
           />
         </label>
+
+        <div>
+          <button
+            type="button"
+            onClick={handleGetLocation}
+            disabled={locating}
+            style={{
+              fontSize: "12px",
+              padding: "6px 12px",
+              borderRadius: "6px",
+              border: "1px solid #cbd5e1",
+              backgroundColor: "#f8fafc",
+              cursor: locating ? "default" : "pointer",
+              color: "#334155",
+              opacity: locating ? 0.7 : 1,
+            }}
+          >
+            {locating ? "📍 Locating..." : "📍 Use my current location"}
+          </button>
+          {locationCaptured && (
+            <span style={{ fontSize: "12px", color: "#16a34a", marginLeft: "10px" }}>
+              📍 Location captured, click Save to apply
+            </span>
+          )}
+        </div>
 
         <div>
           <span style={{ fontSize: "13px", color: "#475569" }}>Activities</span>

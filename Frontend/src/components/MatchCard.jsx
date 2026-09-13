@@ -12,7 +12,7 @@ const QUALITY_STYLE = {
 // Mirrors MATCH_WEIGHT in Backend/services/matching.service.js.
 const BREAKDOWN_CATEGORIES = [
   { key: "activity", label: "Activity", max: 30, appliesWhen: (f) => !!f.activity },
-  { key: "location", label: "Location", max: 20, appliesWhen: (f) => !!f.city },
+  { key: "location", label: "Location", max: 20, appliesWhen: (f) => !!f.city || !!f.radiusKm },
   { key: "availability", label: "Availability", max: 25, appliesWhen: (f) => !!f.day },
   { key: "skill", label: "Skill level", max: 15, appliesWhen: (f) => !!f.skillLevel },
   { key: "rating", label: "Rating", max: 10, appliesWhen: () => true },
@@ -56,11 +56,12 @@ const Meter = ({ label, value, max, applicable, hint }) => {
  * + status-colored quality chip, and a per-category breakdown of how that
  * score was earned (mirrors the backend's weighted match algorithm 1:1).
  */
-const MatchCard = ({ rank, profile, matchScore, matchQuality, matchBreakdown, appliedFilters, requestState, onSendRequest }) => {
+const MatchCard = ({ rank, profile, matchScore, matchQuality, matchBreakdown, distanceKm, appliedFilters, requestState, onSendRequest }) => {
   const qualityClass = QUALITY_STYLE[matchQuality] || "bg-slate-200 text-slate-900";
   const name = profile.user?.name || profile.user?.email || "Unknown";
   const initial = name.charAt(0).toUpperCase();
   const userId = profile.user?._id;
+  const dist = distanceKm ?? profile.location?.distanceKm;
 
   return (
     <div className="relative bg-white border border-slate-200/80 rounded-2xl p-5 shadow-xs hover:shadow-md transition-shadow">
@@ -78,7 +79,8 @@ const MatchCard = ({ rank, profile, matchScore, matchQuality, matchBreakdown, ap
         <div className="flex-1 min-w-0">
           <div className="font-semibold text-sm text-slate-900">{name}</div>
           <div className="text-xs text-slate-600 mt-0.5">
-            {profile.skillLevel} · {profile.location?.city || "city not set"} ·{" "}
+            {profile.skillLevel} · {profile.location?.city || "city not set"}
+            {dist !== undefined && dist !== null ? ` · ${dist} km away` : ""} ·{" "}
             {(profile.activities || []).map((a) => a.name).join(", ") || "no activities listed"}
           </div>
           <div className="mt-1">

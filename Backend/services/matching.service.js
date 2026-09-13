@@ -72,7 +72,33 @@ const calculateMatchScore = (profile, criteria) => {
   // -------------------------
   // 2. Location Match (20%)
   // -------------------------
-  if (criteria.city) {
+  /**
+   * Distance scoring uses a linear decay curve:
+   * - Within 2 km: Full score (100% of location weight).
+   * - Between 2 km and radiusKm: Decreases linearly from 1.0 to 0.0 using formula:
+   *   ratio = 1 - (km - 2) / (radiusKm - 2), clamped to range [0, 1].
+   * - Beyond radiusKm: 0 score.
+   * 
+   * Linear decay is simple, predictable, and easy to explain. It can later be switched
+   * to exponential decay if distance penalty requires non-linear scaling.
+   */
+  if (criteria.radiusKm && profile.distanceMeters !== undefined) {
+    availableWeight += MATCH_WEIGHT.location;
+
+    const km = profile.distanceMeters / 1000;
+    const radiusKm = Number(criteria.radiusKm);
+
+    let ratio = 0;
+    if (km <= 2) {
+      ratio = 1;
+    } else if (radiusKm > 2) {
+      ratio = 1 - (km - 2) / (radiusKm - 2);
+      ratio = Math.max(0, Math.min(1, ratio));
+    }
+
+    breakdown.location = MATCH_WEIGHT.location * ratio;
+    earnedScore += breakdown.location;
+  } else if (criteria.city) {
     availableWeight += MATCH_WEIGHT.location;
 
     const candidateCity = profile.location?.city?.trim().toLowerCase();

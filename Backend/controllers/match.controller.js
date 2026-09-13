@@ -10,7 +10,7 @@ const {calculateMatchScore,
 const { successResponse } = require("../utils/response");
 
 const getMatches=async (req,res)=>{
-    const {activity,city,skillLevel,day,startTime,endTime} = req.query;
+    const {activity,city,skillLevel,day,startTime,endTime,radiusKm,lat,lng} = req.query;
 
     // Validate activity ID
 
@@ -30,35 +30,118 @@ const getMatches=async (req,res)=>{
       throw error;
       }
 
-      const filter = {user:{$ne: req.user.id}}
+    let profiles;
+    if (radiusKm !== undefined && radiusKm !== "") {
+      const radiusNum = Number(radiusKm);
+      if (!Number.isFinite(radiusNum) || radiusNum < 1 || radiusNum > 100) {
+        const error = new Error("Radius must be between 1 and 100 km");
+        error.statusCode = 400;
+        throw error;
+      }
 
+      let origin;
+      if (lat !== undefined && lng !== undefined && lat !== "" && lng !== "") {
+        const latNum = Number(lat);
+        const lngNum = Number(lng);
+        if (
+          !Number.isFinite(latNum) ||
+          !Number.isFinite(lngNum) ||
+          latNum < -90 ||
+          latNum > 90 ||
+          lngNum < -180 ||
+          lngNum > 180
+        ) {
+          const error = new Error("Invalid coordinates");
+          error.statusCode = 400;
+          throw error;
+        }
+        origin = [lngNum, latNum];
+      } else {
+        const myProfile = await Profile.findOne({ user: req.user.id }).select("location.point");
+        if (!myProfile?.location?.point?.coordinates || myProfile.location.point.coordinates.length !== 2) {
+          const error = new Error("Set your location in your profile first");
+          error.statusCode = 400;
+          throw error;
+        }
+        origin = myProfile.location.point.coordinates;
+      }
 
-  // Activity is a hard filter.
+      const filter = {
+        user: { $ne: new mongoose.Types.ObjectId(req.user.id) },
+      };
 
-    if(activity)
-    {
-      filter.activities = activity;
+      if (activity) {
+        filter.activities = new mongoose.Types.ObjectId(activity);
+      }
+
+      const results = await Profile.aggregate([
+        {
+          $geoNear: {
+            near: { type: "Point", coordinates: origin },
+            distanceField: "distanceMeters",
+            maxDistance: radiusNum * 1000,
+            spherical: true,
+            query: filter,
+          },
+        },
+      ]);
+
+      profiles = await Profile.populate(results, [
+        { path: "user", select: "name email" },
+        { path: "activities", select: "name" },
+      ]);
+    } else {
+      const filter = { user: { $ne: req.user.id } };
+
+      if (activity) {
+        filter.activities = activity;
+      }
+
+      profiles = await Profile.find(filter)
+        .populate("user", "name email")
+        .populate("activities", "name");
     }
-
-    // Get potential partners
-
-    const profiles = await Profile.find(filter)
-    .populate("user","name email")
-    .populate("activities","name");
 
     const criteria={activity,city,  skillLevel,
     day,
     startTime,
-    endTime,}
+    endTime,
+    radiusKm}
 
     const matches = profiles.map((profile)=>{
       const match =calculateMatchScore(profile,criteria);
 
-      return {  profile,
+      const profileObj = profile.toObject ? profile.toObject() : { ...profile };
+
+      if (profileObj.location?.point?.coordinates) {
+        const [lngVal, latVal] = profileObj.location.point.coordinates;
+        const latRounded = Math.round(latVal * 100) / 100;
+        const lngRounded = Math.round(lngVal * 100) / 100;
+        profileObj.location.approxLocation = [latRounded, lngRounded];
+        delete profileObj.location.point;
+      }
+
+      let distanceKm;
+      if (profileObj.distanceMeters !== undefined) {
+        const kmExact = profileObj.distanceMeters / 1000;
+        distanceKm = kmExact < 1 ? "< 1" : Math.round(kmExact);
+      }
+
+      return {
+        profile: profileObj,
         matchScore: match.score,
         matchQuality: getMatchQuality(match.score),
-        matchBreakdown: match.breakdown}
-    }).sort((a,b)=>b.matchScore - a.matchScore)
+        matchBreakdown: match.breakdown,
+        ...(distanceKm !== undefined && { distanceKm }),
+      };
+    }).sort((a, b) => {
+      if (b.matchScore !== a.matchScore) {
+        return b.matchScore - a.matchScore;
+      }
+      const distA = a.profile.distanceMeters ?? Infinity;
+      const distB = b.profile.distanceMeters ?? Infinity;
+      return distA - distB;
+    });
 
     return successResponse(res,{
       count: matches.length,
