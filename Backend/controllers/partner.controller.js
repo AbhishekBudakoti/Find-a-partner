@@ -2,6 +2,7 @@ const mongoose = require("mongoose");
 
 const Profile = require("../models/profile.model");
 const { successResponse } = require("../utils/response");
+const { getHiddenUserIds } = require("../services/block.service");
 
 const searchPartners = async (req, res) => {
   const {
@@ -12,9 +13,12 @@ const searchPartners = async (req, res) => {
     endTime,
   } = req.query;
 
+  // Blocked users (either direction) and suspended users never show up.
+  const hiddenUserIds = await getHiddenUserIds(req.user.id);
+
   const filter = {
     user: {
-      $ne: req.user.id,
+      $nin: [req.user.id, ...hiddenUserIds],
     },
   };
 

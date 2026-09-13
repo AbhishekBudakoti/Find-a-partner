@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import apiClient from "../api/client";
 import { useAuth } from "../context/AuthContext";
 import { useSocket } from "../context/SocketContext";
+import UserActionsMenu from "../components/UserActionsMenu";
 
 // Mirrors SESSION_STATUSES in Backend/models/session.model.js.
 const STATUS_STYLE = {
@@ -48,10 +49,11 @@ const emptyForm = {
   locationName: "",
 };
 
-const SessionCard = ({ session, currentUserId, busy, onAction }) => {
+const SessionCard = ({ session, currentUserId, busy, onAction, onBlocked }) => {
   const partner = (session.participants || []).find(
     (p) => (p._id || p).toString() !== currentUserId
   );
+  const partnerId = (partner?._id || partner)?.toString();
   const isProposer =
     (session.proposedBy?._id || session.proposedBy)?.toString() === currentUserId;
 
@@ -97,7 +99,7 @@ const SessionCard = ({ session, currentUserId, busy, onAction }) => {
           )}
         </div>
 
-        <div className="flex gap-2 shrink-0">
+        <div className="flex gap-2 shrink-0 items-center">
           {canRespond && (
             <>
               <button
@@ -140,6 +142,14 @@ const SessionCard = ({ session, currentUserId, busy, onAction }) => {
               Cancel
             </button>
           )}
+
+          {/* Passing the session lets the report reference it (enables "no-show"). */}
+          <UserActionsMenu
+            userId={partnerId}
+            userName={partner?.name}
+            sessionId={session._id}
+            onBlocked={onBlocked}
+          />
         </div>
       </div>
     </div>
@@ -172,21 +182,30 @@ const Sessions = () => {
     }
   }, []);
 
-  useEffect(() => {
-    load();
-
-    // Partner picker: POST /sessions needs a match id, which only
-    // /matches/mine exposes (/matches is the ranked candidate search).
+  // Partner picker: POST /sessions needs a match id, which only
+  // /matches/mine exposes (/matches is the ranked candidate search).
+  const loadMatches = useCallback(() => {
     apiClient
       .get("/matches/mine")
       .then(({ data }) => setMatches(data.data?.matches || []))
       .catch(() => {});
+  }, []);
+
+  // Blocking ends the match and cancels open sessions, so refresh both lists.
+  const handleBlocked = () => {
+    load();
+    loadMatches();
+  };
+
+  useEffect(() => {
+    load();
+    loadMatches();
 
     apiClient
       .get("/activities")
       .then(({ data }) => setActivities(data.data?.activities || []))
       .catch(() => {});
-  }, [load]);
+  }, [load, loadMatches]);
 
   // Depend on the ids as a stable string, not the `sessions` array: every
   // reload produces a new array identity, which would otherwise make the
@@ -381,6 +400,7 @@ const Sessions = () => {
                   currentUserId={currentUserId}
                   busy={busyId === session._id}
                   onAction={act}
+                  onBlocked={handleBlocked}
                 />
               ))}
             </div>
@@ -400,6 +420,7 @@ const Sessions = () => {
                   currentUserId={currentUserId}
                   busy={busyId === session._id}
                   onAction={act}
+                  onBlocked={handleBlocked}
                 />
               ))}
             </div>

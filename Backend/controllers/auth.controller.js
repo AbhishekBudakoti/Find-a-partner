@@ -3,6 +3,7 @@ const jwt = require('jsonwebtoken');
 
 const User = require('../models/user.model');
 const { successResponse } = require('../utils/response');
+const { getActiveSuspension, buildSuspendedError } = require('../services/moderation.service');
 
 
 //Register user
@@ -81,6 +82,13 @@ const login=async(req,res)=>{
         error.statusCode=400;
         throw error;
 
+    }
+
+    // Checked only after the password matches, so suspension status isn't
+    // revealed to someone guessing at an email address.
+    const suspension = await getActiveSuspension(user);
+    if (suspension) {
+        throw buildSuspendedError(suspension);
     }
 
 

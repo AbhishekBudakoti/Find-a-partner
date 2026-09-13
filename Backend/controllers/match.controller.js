@@ -8,6 +8,7 @@ const {calculateMatchScore,
 
 
 const { successResponse } = require("../utils/response");
+const { getHiddenUserIds } = require("../services/block.service");
 
 const getMatches=async (req,res)=>{
     const {activity,city,skillLevel,day,startTime,endTime,radiusKm,lat,lng} = req.query;
@@ -29,6 +30,9 @@ const getMatches=async (req,res)=>{
          error.statusCode= 400;
       throw error;
       }
+
+    // Blocked users (either direction) and suspended users never show up.
+    const hiddenUserIds = await getHiddenUserIds(req.user.id);
 
     let profiles;
     if (radiusKm !== undefined && radiusKm !== "") {
@@ -66,8 +70,9 @@ const getMatches=async (req,res)=>{
         origin = myProfile.location.point.coordinates;
       }
 
+      // Aggregation skips Mongoose casting, so every id here must be an ObjectId.
       const filter = {
-        user: { $ne: new mongoose.Types.ObjectId(req.user.id) },
+        user: { $nin: [new mongoose.Types.ObjectId(req.user.id), ...hiddenUserIds] },
       };
 
       if (activity) {
@@ -91,7 +96,7 @@ const getMatches=async (req,res)=>{
         { path: "activities", select: "name" },
       ]);
     } else {
-      const filter = { user: { $ne: req.user.id } };
+      const filter = { user: { $nin: [req.user.id, ...hiddenUserIds] } };
 
       if (activity) {
         filter.activities = activity;

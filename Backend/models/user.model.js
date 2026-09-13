@@ -29,6 +29,25 @@ const userSchema=new mongoose.Schema({
     isVerified:{
         type:Boolean,
         default:false
+    },
+    // --- Moderation ---
+    isSuspended:{
+        type:Boolean,
+        default:false
+    },
+    // null while suspended = permanent suspension
+    suspendedUntil:{
+        type:Date,
+        default:null
+    },
+    suspensionReason:{
+        type:String,
+        default:""
+    },
+    warningsCount:{
+        type:Number,
+        min:0,
+        default:0
     }
 },{timestamps:true})
 

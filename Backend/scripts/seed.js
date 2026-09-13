@@ -67,6 +67,25 @@ async function seed() {
             console.log('Updated profile for main test user with coordinates.');
         }
 
+        // 2b. Admin user for the moderation dashboard (/admin/reports).
+        // There is intentionally no API to become an admin.
+        const adminEmail = 'admin@example.com';
+        let adminUser = await User.findOne({ email: adminEmail });
+        if (!adminUser) {
+            adminUser = await User.create({
+                name: 'Admin',
+                email: adminEmail,
+                password: hashedPassword,
+                role: 'admin',
+                isVerified: true
+            });
+            console.log(`Created admin user: ${adminEmail}`);
+        } else {
+            adminUser.password = hashedPassword;
+            adminUser.role = 'admin';
+            await adminUser.save();
+        }
+
         // 3. Test Candidates at various distances from [78.0322, 30.3165]
         const candidates = [
             {

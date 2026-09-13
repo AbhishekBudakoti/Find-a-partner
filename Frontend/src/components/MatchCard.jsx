@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import OnlineStatus from "./OnlineStatus";
+import UserActionsMenu from "./UserActionsMenu";
 
 // matchQuality -> Tailwind badge classes
 const QUALITY_STYLE = {
@@ -56,7 +57,7 @@ const Meter = ({ label, value, max, applicable, hint }) => {
  * + status-colored quality chip, and a per-category breakdown of how that
  * score was earned (mirrors the backend's weighted match algorithm 1:1).
  */
-const MatchCard = ({ rank, profile, matchScore, matchQuality, matchBreakdown, distanceKm, appliedFilters, requestState, onSendRequest }) => {
+const MatchCard = ({ rank, profile, matchScore, matchQuality, matchBreakdown, distanceKm, appliedFilters, requestState, onSendRequest, onBlocked }) => {
   const qualityClass = QUALITY_STYLE[matchQuality] || "bg-slate-200 text-slate-900";
   const name = profile.user?.name || profile.user?.email || "Unknown";
   const initial = name.charAt(0).toUpperCase();
@@ -116,6 +117,9 @@ const MatchCard = ({ rank, profile, matchScore, matchQuality, matchBreakdown, di
       </div>
 
       <div className="mt-4 flex gap-2 justify-end items-center">
+        <div className="mr-auto">
+          <UserActionsMenu userId={userId} userName={name} onBlocked={onBlocked} />
+        </div>
         <Link
           to={`/chat/${userId}?name=${encodeURIComponent(name)}`}
           className="px-3.5 py-1.5 text-xs font-semibold text-slate-700 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors no-underline"

@@ -9,6 +9,8 @@ import Requests from "./pages/Requests";
 import Sessions from "./pages/Sessions";
 import Chat from "./pages/Chat";
 import ProtectedRoute from "./components/ProtectedRoute";
+import AdminRoute from "./components/AdminRoute";
+import AdminReports from "./pages/AdminReports";
 
 function App() {
   return (
@@ -24,6 +26,10 @@ function App() {
             <Route path="/requests" element={<Requests />} />
             <Route path="/sessions" element={<Sessions />} />
             <Route path="/chat/:userId" element={<Chat />} />
+
+            <Route element={<AdminRoute />}>
+              <Route path="/admin/reports" element={<AdminReports />} />
+            </Route>
           </Route>
 
           <Route path="/" element={<Navigate to="/discover" replace />} />

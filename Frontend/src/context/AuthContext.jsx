@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
-import apiClient from "../api/client";
+import apiClient, { SUSPENDED_EVENT } from "../api/client";
 
 /**
  * AuthContext provides the single source of truth for "who is logged in",
@@ -11,6 +11,9 @@ const AuthContext = createContext(null);
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  // Message shown on the login page when the user was signed out by the
+  // server (e.g. "Your account is suspended until 2026-09-20").
+  const [authNotice, setAuthNotice] = useState("");
 
   /**
    * Re-checks auth status against the backend. Call after login/register/logout
@@ -36,12 +39,26 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
+  const clearAuthNotice = useCallback(() => setAuthNotice(""), []);
+
   useEffect(() => {
     refresh();
   }, [refresh]);
 
+  // The API client fires this when any request comes back ACCOUNT_SUSPENDED;
+  // dropping the user sends ProtectedRoute back to /login with the reason.
+  useEffect(() => {
+    const onSuspended = (event) => {
+      setUser(null);
+      setAuthNotice(event.detail?.message || "Your account is suspended");
+    };
+
+    window.addEventListener(SUSPENDED_EVENT, onSuspended);
+    return () => window.removeEventListener(SUSPENDED_EVENT, onSuspended);
+  }, []);
+
   return (
-    <AuthContext.Provider value={{ user, loading, refresh, logout }}>
+    <AuthContext.Provider value={{ user, loading, refresh, logout, authNotice, clearAuthNotice }}>
       {children}
     </AuthContext.Provider>
   );

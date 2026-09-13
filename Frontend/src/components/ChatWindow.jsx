@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useSocket } from "../context/SocketContext";
 import apiClient from "../api/client";
+import UserActionsMenu from "./UserActionsMenu";
 
 const ChatWindow = ({ userId, userName }) => {
     const {
@@ -10,16 +11,25 @@ const ChatWindow = ({ userId, userName }) => {
         typingUsers,
         startTyping,
         stopTyping,
+        chatError,
+        clearChatError,
     } = useSocket();
 
     const [message, setMessage] = useState("");
     const [history, setHistory] = useState([]);
     const [authError, setAuthError] = useState(false);
+    // From GET /chat/:userId — false when there's no active match or a block exists.
+    const [canMessage, setCanMessage] = useState(true);
 
     const messagesEndRef = useRef(null);
     const typingTimeoutRef = useRef(null);
 
     const isOtherUserTyping = typingUsers?.has(userId);
+
+    // Only surface socket errors that belong to this conversation.
+    const conversationError =
+        chatError && (!chatError.recipientId || chatError.recipientId === userId) ? chatError : null;
+    const messagingLocked = !canMessage || conversationError?.code === "CHAT_NOT_ALLOWED";
 
     // Fetch chat history and mark messages as read
     useEffect(() => {
@@ -29,6 +39,9 @@ const ChatWindow = ({ userId, userName }) => {
 
                 setAuthError(false);
                 setHistory(data.data.messages || data.data.message || []);
+                if (typeof data.data.canMessage === "boolean") {
+                    setCanMessage(data.data.canMessage);
+                }
 
                 // Mark received messages as read
                 try {
@@ -109,7 +122,7 @@ const ChatWindow = ({ userId, userName }) => {
 
         const trimmedMessage = message.trim();
 
-        if (!trimmedMessage) return;
+        if (!trimmedMessage || messagingLocked) return;
 
         if (!connected) {
             console.error("Socket is not connected");
@@ -136,6 +149,11 @@ const ChatWindow = ({ userId, userName }) => {
         const value = event.target.value;
 
         setMessage(value);
+
+        // A transient error (e.g. "Failed to send") shouldn't linger once the user retries.
+        if (conversationError && conversationError.code !== "CHAT_NOT_ALLOWED") {
+            clearChatError();
+        }
 
         // Empty input = stop typing
         if (!value.trim()) {
@@ -188,18 +206,60 @@ const ChatWindow = ({ userId, userName }) => {
                 style={{
                     padding: "15px",
                     borderBottom: "1px solid #ddd",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    gap: "8px",
                 }}
             >
-                <strong>{userName || "Chat"}</strong>
-
                 <div>
-                    <small>
-                        {connected
-                            ? "Online connection"
-                            : "Disconnected"}
-                    </small>
+                    <strong>{userName || "Chat"}</strong>
+
+                    <div>
+                        <small>
+                            {connected
+                                ? "Online connection"
+                                : "Disconnected"}
+                        </small>
+                    </div>
                 </div>
+
+                <UserActionsMenu
+                    userId={userId}
+                    userName={userName}
+                    onBlocked={() => setCanMessage(false)}
+                />
             </div>
+
+            {messagingLocked && (
+                <div
+                    role="status"
+                    style={{
+                        padding: "10px 15px",
+                        backgroundColor: "#f8fafc",
+                        color: "#475569",
+                        fontSize: "13px",
+                        borderBottom: "1px solid #e2e8f0",
+                    }}
+                >
+                    You can't send messages in this conversation.
+                </div>
+            )}
+
+            {conversationError && !messagingLocked && (
+                <div
+                    role="alert"
+                    style={{
+                        padding: "10px 15px",
+                        backgroundColor: "#fef2f2",
+                        color: "#991b1b",
+                        fontSize: "13px",
+                        borderBottom: "1px solid #fecaca",
+                    }}
+                >
+                    {conversationError.message}
+                </div>
+            )}
 
             {authError && (
                 <div
@@ -296,8 +356,8 @@ const ChatWindow = ({ userId, userName }) => {
                     value={message}
                     onChange={handleTyping}
                     onBlur={handleInputBlur}
-                    placeholder="Type a message..."
-                    disabled={!connected}
+                    placeholder={messagingLocked ? "Messaging unavailable" : "Type a message..."}
+                    disabled={!connected || messagingLocked}
                     style={{
                         flex: 1,
                         padding: "10px",
@@ -308,6 +368,7 @@ const ChatWindow = ({ userId, userName }) => {
                     type="submit"
                     disabled={
                         !connected ||
+                        messagingLocked ||
                         !message.trim()
                     }
                 >

@@ -26,7 +26,9 @@ const notificationSchema =new mongoose.Schema({
             "session_rejected",
             "session_cancelled",
             "session_reminder",
-            "review_received"
+            "review_received",
+            "account_warning",
+            "report_reviewed"
         ],
         required:true,
     },

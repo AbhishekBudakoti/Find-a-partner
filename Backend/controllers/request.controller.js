@@ -1,6 +1,11 @@
+const mongoose = require("mongoose");
+
 const PartnerRequest = require("../models/partnerRequest.model");
 const Match = require("../models/match.model");
+const User = require("../models/user.model");
 const { createNotification } = require("../services/notification.service");
+const { getBlockedUserIds, isBlockedBetween } = require("../services/block.service");
+const { getActiveSuspension } = require("../services/moderation.service");
 
 const createRequest = async (req, res, next) => {
     try {
@@ -17,6 +22,27 @@ const createRequest = async (req, res, next) => {
         if (sender.toString() === recipient.toString()) {
             const error = new Error("You cannot send a request to yourself");
             error.statusCode = 400;
+            throw error;
+        }
+
+        if (!mongoose.Types.ObjectId.isValid(recipient)) {
+            const error = new Error("Invalid recipient ID");
+            error.statusCode = 400;
+            throw error;
+        }
+
+        const recipientUser = await User.findById(recipient).select("isSuspended suspendedUntil suspensionReason");
+
+        if (!recipientUser) {
+            const error = new Error("User not found");
+            error.statusCode = 404;
+            throw error;
+        }
+
+        // Deliberately vague: don't reveal whether it's a block or a suspension.
+        if ((await getActiveSuspension(recipientUser)) || (await isBlockedBetween(sender, recipient))) {
+            const error = new Error("You can't send a request to this user");
+            error.statusCode = 403;
             throw error;
         }
 
@@ -69,10 +95,13 @@ const getUserRequests = async (req, res, next) => {
     try {
         const userId = req.user.id;
 
+        // Hide every request involving someone on either side of a block.
+        const blockedIds = await getBlockedUserIds(userId);
+
         const requests = await PartnerRequest.find({
             $or: [
-                { sender: userId },
-                { recipient: userId }
+                { sender: userId, recipient: { $nin: blockedIds } },
+                { recipient: userId, sender: { $nin: blockedIds } }
             ]
         })
 
@@ -112,6 +141,12 @@ const acceptRequest = async (req, res, next) => {
             throw error
         }
 
+        if (await isBlockedBetween(request.sender, request.recipient)) {
+            const error = new Error("You can't accept a request from this user");
+            error.statusCode = 403;
+            throw error;
+        }
+
         request.status = "accepted";
         await request.save();
 
@@ -126,6 +161,11 @@ const acceptRequest = async (req, res, next) => {
                 users: [request.sender, request.recipient],
                 request: request._id,
             });
+        } else if (match.status !== "active") {
+            // A match ended by a block (then unblocked) comes back to life when
+            // the pair re-matches; otherwise chat and sessions stay locked.
+            match.status = "active";
+            await match.save();
         }
 
         await createNotification({

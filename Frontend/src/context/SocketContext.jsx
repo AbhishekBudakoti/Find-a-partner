@@ -37,6 +37,12 @@ export const SocketProvider = ({ children }) => {
 
   const [typingUsers, setTypingUsers] = useState(new Set());
 
+  // Last chat:error from the server: { message, code, recipientId }.
+  // code "CHAT_NOT_ALLOWED" means the conversation is locked (block / no match).
+  const [chatError, setChatError] = useState(null);
+
+  const clearChatError = () => setChatError(null);
+
 
   const startTyping = (recipientId) => {
     if (!socket || !connected || !recipientId) return;
@@ -218,6 +224,11 @@ export const SocketProvider = ({ children }) => {
     // Chat error received from server
     newSocket.on("chat:error", (data) => {
       console.error("Chat error:", data.message);
+      setChatError({
+        message: data.message,
+        code: data.code || null,
+        recipientId: data.recipientId || null,
+      });
     });
 
 
@@ -298,6 +309,8 @@ export const SocketProvider = ({ children }) => {
         markAllAsRead,
         chatMessages,
         sendMessage,
+        chatError,
+        clearChatError,
           typingUsers,
     startTyping,
     stopTyping,

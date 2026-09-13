@@ -1,10 +1,19 @@
+const mongoose = require("mongoose")
+
 const Message = require("../models/message.model")
+const { canUsersMessage } = require("../services/block.service")
 
 const getChatHistory = async (req, res, next) => {
     try {
         const userId = req.user.id;
 
         const recipientId = req.params.userId;
+
+        if (!mongoose.Types.ObjectId.isValid(recipientId)) {
+            const error = new Error("Invalid user ID");
+            error.statusCode = 400;
+            throw error;
+        }
 
 
         const messages = await Message.find({
@@ -22,10 +31,14 @@ const getChatHistory = async (req, res, next) => {
             .populate("sender", "name email")
             .populate("recipient", "name email")
 
+        // History stays readable after a block (it can be evidence for a
+        // report), but the client uses this flag to disable the input.
+        const canMessage = await canUsersMessage(userId, recipientId)
+
         res.status(200).json({
             success: true,
             message: "Chat history fetched successfully",
-            data: { messages }
+            data: { messages, canMessage }
         })
     }
 

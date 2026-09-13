@@ -5,9 +5,13 @@ const jwt = require("jsonwebtoken");
 // fails loudly at boot instead of silently rejecting every socket handshake.
 const { parseCookie } = require("cookie");
 
+const mongoose = require("mongoose");
+
 const Message = require("../models/message.model");
-const PartnerRequest = require("../models/partnerRequest.model");
 const Session = require("../models/session.model");
+const User = require("../models/user.model");
+const { canUsersMessage, isBlockedBetween } = require("../services/block.service");
+const { getActiveSuspension } = require("../services/moderation.service");
 const {
     addUserSocket,
     removeUserSocket,
@@ -17,6 +21,31 @@ const {
 
 // Singleton reference to the Socket.io server instance
 let ioInstance = null;
+
+// Typing events fire on every keystroke, so cache the block check per socket
+// instead of querying MongoDB each time.
+const TYPING_PERMISSION_TTL_MS = 30 * 1000;
+
+const canRelayTyping = async (socket, recipientId) => {
+    if (!socket.data.typingPermissions) {
+        socket.data.typingPermissions = new Map();
+    }
+
+    const cached = socket.data.typingPermissions.get(recipientId);
+    if (cached && cached.expiresAt > Date.now()) {
+        return cached.allowed;
+    }
+
+    const allowed = mongoose.Types.ObjectId.isValid(recipientId)
+        && !(await isBlockedBetween(socket.user.id, recipientId));
+
+    socket.data.typingPermissions.set(recipientId, {
+        allowed,
+        expiresAt: Date.now() + TYPING_PERMISSION_TTL_MS,
+    });
+
+    return allowed;
+};
 
 /**
  * Initializes the Socket.io server, configures CORS and JWT authentication middleware,
@@ -37,7 +66,8 @@ const initializeSocket = (server) => {
 
     // --- SOCKET AUTHENTICATION MIDDLEWARE ---
     // Extract JWT token from cookie headers and authenticate incoming connection requests
-    io.use((socket, next) => {
+    io.use(async (socket, next) => {
+        let decoded;
         try {
             const cookieHeader = socket.handshake.headers.cookie;
 
@@ -53,17 +83,33 @@ const initializeSocket = (server) => {
             }
 
             // Verify JWT token using configured secret
-            const decoded = jwt.verify(
+            decoded = jwt.verify(
                 token,
                 process.env.JWT_SECRET || process.env.JWT_SECRETS || 'dev-secret-key'
             );
-
-            // Attach decoded user metadata to the socket object
-            socket.user = decoded;
-            next();
         } catch (error) {
             console.error("Socket JWT authentication error:", error.name, error.message);
-            next(new Error("Invalid or expired token"));
+            return next(new Error("Invalid or expired token"));
+        }
+
+        try {
+            // Same rule as the REST `protect` middleware: role and suspension
+            // come from the database, not from the (possibly stale) token.
+            const user = await User.findById(decoded.id).select("role isSuspended suspendedUntil suspensionReason");
+
+            if (!user) {
+                return next(new Error("Authentication required"));
+            }
+
+            if (await getActiveSuspension(user)) {
+                return next(new Error("Account suspended"));
+            }
+
+            socket.user = { id: user._id.toString(), role: user.role };
+            next();
+        } catch (error) {
+            console.error("Socket user lookup error:", error);
+            next(new Error("Authentication failed"));
         }
     });
 
@@ -113,25 +159,16 @@ const initializeSocket = (server) => {
                     })
                 }
 
-                    // Check whether the users are accepted partners
-
-                    const acceptedRequest = await PartnerRequest.findOne({
-                        status:"accepted",
-                        $or:[
-                            {
-                                sender:senderId,
-                                recipient:recipientId
-                            },{
-                                sender:recipientId,
-                                recipient:senderId
-                            }
-                        ]
-                    })
-
-                    if(!acceptedRequest){
-                        return socket.emit("chat:error",{message:"You can only chat with an accepted partner"})
-
-                    }
+                // Requires an ACTIVE match and no block in either direction.
+                // (An accepted request isn't enough: blocking ends the match
+                // but leaves the old accepted request on file.)
+                if (!(await canUsersMessage(senderId, recipientId.toString()))) {
+                    return socket.emit("chat:error", {
+                        message: "You can't message this user",
+                        code: "CHAT_NOT_ALLOWED",
+                        recipientId: recipientId.toString(),
+                    });
+                }
 
 
 
@@ -160,31 +197,44 @@ const initializeSocket = (server) => {
             }
         });
 
-        socket.on("chat:typing", ({ recipientId }) => {
+        socket.on("chat:typing", async ({ recipientId } = {}) => {
             if (!recipientId) return;
 
-            const recipientSocketIds = getUserSocketIds(
-                recipientId.toString()
-            );
+            try {
+                if (!(await canRelayTyping(socket, recipientId.toString()))) return;
 
-            recipientSocketIds.forEach((socketId) => {
-                io.to(socketId).emit("chat:typing", {
-                    userId: socket.user.id.toString(),
+                const recipientSocketIds = getUserSocketIds(
+                    recipientId.toString()
+                );
+
+                recipientSocketIds.forEach((socketId) => {
+                    io.to(socketId).emit("chat:typing", {
+                        userId: socket.user.id.toString(),
+                    });
                 });
-            });
+            } catch (error) {
+                console.error("Typing relay error:", error);
+            }
         });
 
-        socket.on("chat:stop_typing", ({ recipientId }) => {
+        socket.on("chat:stop_typing", async ({ recipientId } = {}) => {
             if (!recipientId) return;
-            const recipientSocketIds = getUserSocketIds(
-                recipientId.toString()
-            );
 
-            recipientSocketIds.forEach((socketId) => {
-                io.to(socketId).emit("chat:stop_typing", {
-                    userId: socket.user.id.toString(),
+            try {
+                if (!(await canRelayTyping(socket, recipientId.toString()))) return;
+
+                const recipientSocketIds = getUserSocketIds(
+                    recipientId.toString()
+                );
+
+                recipientSocketIds.forEach((socketId) => {
+                    io.to(socketId).emit("chat:stop_typing", {
+                        userId: socket.user.id.toString(),
+                    });
                 });
-            });
+            } catch (error) {
+                console.error("Typing relay error:", error);
+            }
         });
 
         // --- REAL-TIME SESSION ROOM EVENTS ---

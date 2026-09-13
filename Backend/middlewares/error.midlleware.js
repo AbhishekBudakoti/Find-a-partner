@@ -33,6 +33,9 @@ const errorHandler = (err, req, res, next) => {
     res.status(statusCode).json({
         success: false,
         message,
+        // Machine-readable code (e.g. "ACCOUNT_SUSPENDED") so the client can
+        // react to specific failures without string-matching the message.
+        ...(err.errorCode && { code: err.errorCode }),
     });
 };
 

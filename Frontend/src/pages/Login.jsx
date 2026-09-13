@@ -12,7 +12,7 @@ const inputStyle = {
 };
 
 const Login = () => {
-  const { user, refresh } = useAuth();
+  const { user, refresh, authNotice, clearAuthNotice } = useAuth();
   const { connectSocket } = useSocket() || {};
   const navigate = useNavigate();
   const location = useLocation();
@@ -31,6 +31,7 @@ const Login = () => {
   const handleSubmit = async (event) => {
     event.preventDefault();
     setErrorMsg("");
+    clearAuthNotice();
     setSubmitting(true);
 
     try {
@@ -67,7 +68,10 @@ const Login = () => {
           style={inputStyle}
         />
 
-        {errorMsg && <span style={{ fontSize: "13px", color: "#dc2626" }}>{errorMsg}</span>}
+        {/* A failed login and a server sign-out can carry the same message, so show one. */}
+        {(errorMsg || authNotice) && (
+          <span role="alert" style={{ fontSize: "13px", color: "#dc2626" }}>{errorMsg || authNotice}</span>
+        )}
 
         <button
           type="submit"

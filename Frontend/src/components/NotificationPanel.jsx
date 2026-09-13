@@ -209,7 +209,9 @@ export const NotificationPanel = () => {
             ) : (
               notifications.map((notif) => {
                 const isUnread = !notif.isRead;
-                const senderName = notif.sender?.name || notif.sender?.email || "Someone";
+                // System notifications (warnings, report updates) have no sender.
+                const senderName =
+                  notif.sender?.name || notif.sender?.email || (notif.sender ? "Someone" : "Find a Partner");
 
                 return (
                   <div
@@ -287,7 +289,7 @@ export const NotificationPanel = () => {
                           borderRadius: "4px",
                         }}
                       >
-                        {notif.type ? notif.type.replace("_", " ") : "Notification"}
+                        {notif.type ? notif.type.replace(/_/g, " ") : "Notification"}
                       </span>
 
                       {isUnread && (

@@ -1,6 +1,9 @@
 const Notification = require("../models/notification.model");
 const { getUserSocketIds } = require("./presence.service");
-const { getIO } = require("../socket/socket");
+
+// socket.js pulls in services that depend on this module, so resolve the io
+// getter at call time rather than at import time to avoid a circular import.
+const getIO = () => require("../socket/socket").getIO();
 
 /**
  * Creates a notification in MongoDB and emits a real-time socket event if recipient is online.

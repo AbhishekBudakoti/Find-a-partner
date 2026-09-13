@@ -97,6 +97,12 @@ const Discover = () => {
     }
   };
 
+  // A blocked user disappears from results immediately; the backend already
+  // excludes them from every future search.
+  const handleBlocked = (blockedUserId) => {
+    setMatches((prev) => prev?.filter((m) => m.profile.user?._id !== blockedUserId) ?? prev);
+  };
+
   return (
     <div style={{ maxWidth: "1040px", margin: "24px auto", padding: "0 16px" }}>
       <h1 style={{ fontSize: "26px", color: "#0f172a", margin: "0 0 4px" }}>
@@ -277,6 +283,7 @@ const Discover = () => {
               appliedFilters={appliedFilters}
               requestState={requestStatus[match.profile.user._id]}
               onSendRequest={() => sendRequest(match.profile.user._id)}
+              onBlocked={handleBlocked}
             />
           ))}
         </div>

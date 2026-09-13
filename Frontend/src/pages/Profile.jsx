@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import apiClient from "../api/client";
+import BlockedUsers from "../components/BlockedUsers";
 
 const DAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
 const SKILL_LEVELS = ["beginner", "intermediate", "advanced"];
@@ -152,6 +153,7 @@ const Profile = () => {
   }
 
   return (
+    <>
     <div style={cardStyle}>
       <h1 style={{ fontSize: "20px", marginTop: 0, color: "#0f172a" }}>
         {hasProfile ? "Your profile" : "Create your profile"}
@@ -317,6 +319,9 @@ const Profile = () => {
         </button>
       </form>
     </div>
+
+    <BlockedUsers />
+    </>
   );
 };
 
