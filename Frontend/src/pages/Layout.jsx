@@ -34,7 +34,7 @@ const Layout = () => {
                 Profile
               </NavLink>
               {user.role === "admin" && (
-                <NavLink to="/admin/reports" className={navLinkClass}>
+                <NavLink to="/admin" className={navLinkClass}>
                   Admin
                 </NavLink>
               )}

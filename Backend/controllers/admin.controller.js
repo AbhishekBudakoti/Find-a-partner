@@ -2,6 +2,11 @@ const mongoose = require("mongoose");
 
 const Report = require("../models/report.model");
 const User = require("../models/user.model");
+const Profile = require("../models/profile.model");
+const Activity = require("../models/activity.model");
+const Match = require("../models/match.model");
+const Session = require("../models/session.model");
+const Review = require("../models/review.model");
 const { successResponse } = require("../utils/response");
 const { createNotification } = require("../services/notification.service");
 const { suspendUser } = require("../services/moderation.service");
@@ -209,51 +214,79 @@ const resolveReport = async (req, res) => {
 };
 
 /**
- * @desc    Users currently suspended (for the unsuspend list)
- * @route   GET /api/admin/users/suspended
+ * @desc    Platform overview for the admin dashboard landing page
+ * @route   GET /api/admin/stats
  * @access  Admin
+ *
+ * `isSuspended` is checked directly rather than through getActiveSuspension
+ * (which lazily lifts an expired timed suspension on read): a stats endpoint
+ * should be fast and side-effect-free, so a suspension that expired but
+ * hasn't been touched by a request yet may show here for a moment longer
+ * than it would in getSuspendedUsers.
  */
-const getSuspendedUsers = async (req, res) => {
-  const users = await User.find({
-    isSuspended: true,
-    $or: [{ suspendedUntil: null }, { suspendedUntil: { $gt: new Date() } }],
-  })
-    .select("name email suspendedUntil suspensionReason warningsCount updatedAt")
-    .sort({ updatedAt: -1 });
+const getStats = async (req, res) => {
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
-  return successResponse(res, { count: users.length, users }, "Suspended users fetched");
-};
+  const [
+    totalUsers,
+    suspendedUsers,
+    adminCount,
+    newUsersLast7Days,
+    totalProfiles,
+    totalActivities,
+    activeActivities,
+    totalMatches,
+    activeMatches,
+    sessionStatusCounts,
+    reviewSummary,
+    pendingReports,
+    reportsLast7Days,
+  ] = await Promise.all([
+    User.countDocuments(),
+    User.countDocuments({ isSuspended: true }),
+    User.countDocuments({ role: "admin" }),
+    User.countDocuments({ createdAt: { $gte: sevenDaysAgo } }),
+    Profile.countDocuments(),
+    Activity.countDocuments(),
+    Activity.countDocuments({ isActive: true }),
+    Match.countDocuments(),
+    Match.countDocuments({ status: "active" }),
+    Session.aggregate([{ $group: { _id: "$status", count: { $sum: 1 } } }]),
+    Review.aggregate([
+      { $group: { _id: null, count: { $sum: 1 }, avgRating: { $avg: "$rating" } } },
+    ]),
+    Report.countDocuments({ status: "pending" }),
+    Report.countDocuments({ createdAt: { $gte: sevenDaysAgo } }),
+  ]);
 
-/**
- * @desc    Lift a user's suspension
- * @route   PATCH /api/admin/users/:id/unsuspend
- * @access  Admin
- */
-const unsuspendUser = async (req, res) => {
-  if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-    throw httpError("Invalid user ID", 400);
-  }
-
-  const user = await User.findById(req.params.id).select("isSuspended");
-  if (!user) {
-    throw httpError("User not found", 404);
-  }
-  if (!user.isSuspended) {
-    throw httpError("User is not suspended", 400);
-  }
-
-  await User.updateOne(
-    { _id: user._id },
-    { $set: { isSuspended: false, suspendedUntil: null, suspensionReason: "" } }
+  const sessionsByStatus = Object.fromEntries(
+    Object.values(Session.SESSION_STATUSES).map((s) => [s, 0])
   );
+  sessionStatusCounts.forEach((c) => {
+    sessionsByStatus[c._id] = c.count;
+  });
 
-  return successResponse(res, { userId: user._id }, "Suspension lifted");
+  return successResponse(
+    res,
+    {
+      users: { total: totalUsers, suspended: suspendedUsers, admins: adminCount, newLast7Days: newUsersLast7Days },
+      profiles: { total: totalProfiles },
+      activities: { total: totalActivities, active: activeActivities },
+      matches: { total: totalMatches, active: activeMatches },
+      sessions: { total: sessionStatusCounts.reduce((sum, c) => sum + c.count, 0), byStatus: sessionsByStatus },
+      reviews: {
+        total: reviewSummary[0]?.count || 0,
+        averageRating: reviewSummary[0] ? Math.round(reviewSummary[0].avgRating * 10) / 10 : 0,
+      },
+      reports: { pending: pendingReports, last7Days: reportsLast7Days },
+    },
+    "Stats fetched"
+  );
 };
 
 module.exports = {
   getReports,
   getReportById,
   resolveReport,
-  getSuspendedUsers,
-  unsuspendUser,
+  getStats,
 };
